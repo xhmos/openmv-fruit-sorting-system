@@ -33,6 +33,5 @@ tools/
 Thumbs.db
 desktop.ini
 .idea/
-.vscode/
 *.tmp
 *.bak
