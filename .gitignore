@@ -1,0 +1,38 @@
+# ===== 虚拟环境与依赖（体积大，可重新安装）=====
+backend/venv/
+train_env/
+frontend/node_modules/
+
+# ===== 环境变量与密钥（绝对不能提交）=====
+backend/.env
+backend/.env.local
+*.env
+!.env.example
+
+# ===== 运行时产物 =====
+backend/uploads/
+backend/logs/
+*.log
+
+# ===== Python 缓存 =====
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# ===== 前端构建产物 =====
+frontend/dist/
+frontend/.vite/
+
+# ===== 下载的安装包 / 本地工具 =====
+tools/
+
+# ===== 系统与编辑器文件 =====
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.tmp
+*.bak

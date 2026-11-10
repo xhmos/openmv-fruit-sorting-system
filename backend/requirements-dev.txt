@@ -1,0 +1,7 @@
+# 开发/测试依赖（只在本地跑测试时需要）
+# 安装：pip install -r requirements-dev.txt
+pytest==9.2.0
+pluggy==1.7.0
+iniconfig==2.3.1
+Pygments==2.21.0
+colorama==0.4.6

@@ -1,0 +1,68 @@
+# Nginx 反代示例（Windows / Linux 通用语法）
+#
+# 部署布局：
+#   前端静态资源  -> frontend/dist（npm run build 产物）
+#   后端服务      -> waitress 监听 127.0.0.1:5000
+#   对外          -> Nginx 80/443
+#
+# 三个必须配对的点：
+#   1. client_max_body_size 与后端 MAX_CONTENT_LENGTH（3MB）保持一致，否则大图会被 Nginx 先拦
+#   2. /socket.io/ 必须带 Upgrade / Connection 头，否则实时推送退化成轮询
+#   3. /api/device/stream 是 MJPEG 长连接，必须关闭 proxy_buffering，否则画面不刷新
+
+upstream fruit_backend {
+    server 127.0.0.1:5000;
+}
+
+server {
+    listen 80;
+    server_name your-domain.com;      # 换成实际域名或服务器 IP
+
+    client_max_body_size 3m;
+
+    # ---------- 前端静态页面 ----------
+    location / {
+        root   C:/Users/10149/Desktop/openMV/frontend/dist;
+        index  index.html;
+        # 前端是 hash 路由，这条兜底主要用于兜住 index.html
+        try_files $uri $uri/ /index.html;
+    }
+
+    # ---------- REST 接口 ----------
+    location /api/ {
+        proxy_pass http://fruit_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 60s;
+    }
+
+    # ---------- MJPEG 实时流（长连接，不缓冲） ----------
+    location /api/device/stream {
+        proxy_pass http://fruit_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_buffering off;           # 关键：不缓冲，画面才能连续出
+        proxy_cache off;
+        proxy_read_timeout 3600s;
+    }
+
+    # ---------- 上传的分拣图片 ----------
+    location /uploads/ {
+        proxy_pass http://fruit_backend;
+        proxy_set_header Host $host;
+        expires 60s;
+    }
+
+    # ---------- Socket.IO（必须支持协议升级） ----------
+    location /socket.io/ {
+        proxy_pass http://fruit_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade    $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host       $host;
+        proxy_read_timeout 3600s;
+    }
+}
