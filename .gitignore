@@ -28,6 +28,19 @@ frontend/.vite/
 # ===== 下载的安装包 / 本地工具 =====
 tools/
 
+# ===== 实验五：数据集与训练产物 =====
+# 原始与划分后的图片体积大，且属于本地实验数据，不进仓库
+dataset/raw/
+dataset/split/
+# 训练出的模型权重（.keras 动辄几百 KB 到几 MB，且可由脚本重新生成）
+models/*.keras
+models/*.h5
+models/training_log.csv
+models/*_pred.jpg
+models/_last_capture.jpg
+# 说明：models/ 下的 .tflite、class_names.json、metrics.json、training_curve.png
+# 属于实验成果（体积小、可答辩展示），保留入库。若某次量化模型超过 5MB 再单独排除。
+
 # ===== 系统与编辑器文件 =====
 .DS_Store
 Thumbs.db

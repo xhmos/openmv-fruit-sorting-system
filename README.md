@@ -15,7 +15,39 @@
 | 分拣记录 | 记录列表、筛选、图片查看、导出 Excel、批量删除 |
 | 参数设置 | HSV 阈值、最小面积、置信度门槛、冷却时间在线调整 |
 | 个人中心 | 头像上传/更换/移除、账号信息查看 |
+| 神经网络分拣 | `openmv_script/nn_classify.py` 板端加载 TFLite 模型分类，`train/` 为完整训练链 |
 | OpenMV 端 | `openmv_script/main.py` 为板端脚本，含 WiFi 上报与图像采集逻辑 |
+
+## 神经网络训练链（实验五）
+
+`train/` 目录是完整的 采集 → 划分 → 训练 → 量化 → 验证 工具链，对应《实验五 Open MV 神经网络训练》报告要求。
+
+| 脚本 | 作用 | 关键参数 |
+|---|---|---|
+| `collect_dataset.py` | 采集数据集，输出 320×240 | `--per-class 60` |
+| `split_dataset.py` | 7:2:1 划分，产出 manifest | `--seed 42` |
+| `train_cnn.py` | 轻量 CNN 训练，96×96×3 | `--epochs 30 --batch 32 --lr 1e-3` |
+| `convert_tflite.py` | 转 TFLite + INT8 全整数量化 | `--calib 100` |
+| `pc_infer.py` | PC 端 `tf.lite.Interpreter` 验证 | `--image` 或直接开摄像头 |
+
+```powershell
+.\train_env\Scripts\python.exe train\collect_dataset.py --per-class 60
+.\train_env\Scripts\python.exe train\split_dataset.py --clean
+.\train_env\Scripts\python.exe train\train_cnn.py --epochs 30
+.\train_env\Scripts\python.exe train\convert_tflite.py
+.\train_env\Scripts\python.exe train\pc_infer.py --image dataset\raw\apple\apple_0001.jpg
+```
+
+详细步骤、参数表、报错对照见 [`docs/实验五操作手册.md`](docs/实验五操作手册.md)。
+
+**技术要点**：
+- 数据增强放在 `tf.data` 管道里，不放模型内，保证导出的模型干净、可转换
+- INT8 量化强制 `TFLITE_BUILTINS_INT8` + uint8 输入 + int8 输出，这是 OpenMV 唯一能加载的形式
+- 板端使用 `tf.load()` / `tf.classify()`；`tf.lite.Interpreter` 是 PC 端 API（原实验文档此处有误）
+- 预处理统一为「直接拉伸到 96×96」，训练、PC 推理、量化校准三处一致，避免 PC 准而板端乱
+
+**硬件前提**：只有 **H7 Plus / RT1062（32MB SDRAM）** 能跑模型，标准 H7 仅 1MB SRAM 会 `MemoryError`。
+
 
 ## 技术栈
 
@@ -44,7 +76,12 @@ openMV/
 │  ├─ src/api/                接口封装与 axios 拦截器
 │  └─ vite.config.js
 ├─ deploy/                    waitress 启动脚本、开机自启脚本、nginx 示例
-├─ openmv_script/main.py      OpenMV 板端脚本
+├─ train/                     实验五训练链（采集/划分/训练/转换/PC 推理）
+├─ dataset/                   数据集（raw 原始、split 划分后，均不入 Git）
+├─ models/                    训练产物（.tflite / 指标 / 训练曲线）
+├─ docs/                      实验五操作手册、样例图
+├─ openmv_script/nn_classify.py  板端神经网络推理脚本
+├─ openmv_script/main.py      OpenMV 板端脚本（LAB 色块版）
 ├─ pc_camera_device.py        PC 摄像头模拟设备（联调用）
 ├─ simulate_device.py         模拟上报设备（联调用）
 ├─ 使用手册.md
