@@ -27,6 +27,10 @@ frontend/.vite/
 
 # ===== 下载的安装包 / 本地工具 =====
 tools/
+# 内网穿透用的单文件可执行（52MB），由「内网穿透.bat」首次运行自动下载，不进仓库
+cloudflared.exe
+# cloudflared 运行时会在当前目录生成空的 config.yml，也不入库
+config.yml
 
 # ===== 实验五：数据集与训练产物 =====
 # 原始与划分后的图片体积大，且属于本地实验数据，不进仓库
@@ -36,6 +40,9 @@ dataset/split/
 models/*.keras
 models/*.h5
 models/training_log.csv
+# 训练任务运行时状态（前端轮询用的临时文件）
+models/.train_state.json
+models/.train.log
 models/*_pred.jpg
 models/_last_capture.jpg
 # 说明：models/ 下的 .tflite、class_names.json、metrics.json、training_curve.png
