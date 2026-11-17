@@ -58,6 +58,7 @@ def create_app():
     from routes.record import record_bp
     from routes.setting import setting_bp
     from routes.system import system_bp
+    from routes.train import train_bp
     from routes.user import user_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
@@ -65,6 +66,7 @@ def create_app():
     app.register_blueprint(record_bp, url_prefix="/api/record")
     app.register_blueprint(setting_bp, url_prefix="/api/setting")
     app.register_blueprint(system_bp, url_prefix="/api/system")
+    app.register_blueprint(train_bp, url_prefix="/api/train")
     app.register_blueprint(user_bp, url_prefix="/api/user")
 
     # ---------- 上传图片的访问入口 ----------

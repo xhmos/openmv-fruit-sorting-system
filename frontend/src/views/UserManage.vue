@@ -366,6 +366,33 @@ onMounted(load)
   margin-right: 4px;
 }
 
+/* ---------- 手机适配（≤768px） ---------- */
+@media (max-width: 768px) {
+  .toolbar {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  /* 搜索框独占一行，按钮平分下面一行 */
+  .toolbar :deep(.el-input) {
+    width: 100% !important;
+  }
+
+  .toolbar-right {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .toolbar-right .el-button {
+    width: 100%;
+    margin-left: 0 !important;
+  }
+
+  .table-card :deep(.el-card__body) {
+    padding: 6px 8px 10px;
+  }
+}
+
 .table-card :deep(.el-card__body) {
   padding: 8px 12px 14px;
 }

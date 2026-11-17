@@ -913,4 +913,108 @@ onBeforeUnmount(() => {
     flex-direction: column;
   }
 }
+
+/* ---------- 手机适配（≤768px） ---------- */
+@media (max-width: 768px) {
+  /* 标题和右侧控件挤不下时换行，不要互相压 */
+  .panel-head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .panel-head-right {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .top-row {
+    gap: 12px;
+  }
+
+  /* 4 个统计卡在手机上排成 2×2，数值才不会被裁 */
+  .stat-col {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+
+  .stat-card :deep(.el-card__body) {
+    padding: 12px 14px;
+  }
+
+  .stat-value {
+    font-size: 24px;
+  }
+
+  .bottom-row {
+    gap: 12px;
+    min-height: 0;
+  }
+
+  .list-panel {
+    min-width: 0;
+  }
+
+  .chart {
+    height: 240px;
+  }
+
+  .video {
+    height: 220px;
+  }
+
+  .video-placeholder {
+    height: 220px;
+    padding: 0 16px;
+    text-align: center;
+  }
+
+  .ph-icon {
+    font-size: 32px;
+  }
+
+  .video-meta {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .recent-list {
+    max-height: none;
+  }
+
+  .video-row {
+    gap: 8px;
+  }
+}
+
+@media (max-width: 480px) {
+  .chart {
+    height: 210px;
+  }
+
+  .video {
+    height: 180px;
+  }
+
+  .video-placeholder {
+    height: 180px;
+  }
+
+  .stat-value {
+    font-size: 21px;
+  }
+
+  .stat-label,
+  .stat-foot {
+    font-size: 11px;
+  }
+
+  .recent-meta {
+    gap: 10px;
+  }
+
+  .cam-text {
+    width: 100%;
+  }
+}
 </style>

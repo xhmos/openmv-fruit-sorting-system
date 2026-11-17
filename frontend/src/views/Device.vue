@@ -759,4 +759,66 @@ onMounted(async () => {
   font-size: 12.5px;
   color: var(--el-text-color-secondary);
 }
+
+/* ---------- 手机适配（≤768px） ---------- */
+@media (max-width: 768px) {
+  /* 标题与「全部连接 / 新增设备 / 连接未知设备」三个按钮改为上下两行 */
+  .head {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .head-left {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .head-right {
+    flex-wrap: wrap;
+    width: 100%;
+    gap: 8px;
+  }
+
+  /* 说明文字独占一行，别把「重新扫描」按钮挤出卡片 */
+  .head-right .head-tip {
+    flex: 1 1 100%;
+  }
+
+  .head-right .el-button {
+    flex: 1;
+    margin-left: 0 !important;
+    min-width: 0;
+  }
+
+  .page {
+    gap: 12px;
+  }
+
+  .stats {
+    margin-bottom: 12px;
+  }
+
+  .stat {
+    padding: 12px;
+  }
+
+  .stat-num {
+    font-size: 19px;
+  }
+
+  .field-hint.inline {
+    margin-left: 0;
+    margin-top: 4px;
+  }
+
+  .tips {
+    padding: 10px 12px;
+  }
+
+  .mono {
+    font-size: 12px;
+    word-break: break-all;
+  }
+}
 </style>

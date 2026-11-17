@@ -172,7 +172,7 @@ const info = reactive({
   avatar: '',
 })
 
-const apiBase = API_BASE
+const apiBase = API_BASE || '同源（跟随当前访问地址）'
 const initial = computed(() => (info.username || '?').slice(0, 1).toUpperCase())
 // 后端返回的是 uploads 下的相对路径（如 avatars/xxx.jpg），拼成完整地址
 const avatarSrc = computed(() => (info.avatar ? uploadUrl(info.avatar) : ''))

@@ -340,4 +340,60 @@ onMounted(load)
   justify-content: flex-end;
   padding-top: 12px;
 }
+
+/* ---------- 手机适配（≤768px） ---------- */
+@media (max-width: 768px) {
+  /* 筛选项一项一行，控件撑满可用宽度 */
+  .filter-form {
+    display: block;
+  }
+
+  .filter-form :deep(.el-form-item) {
+    display: flex;
+    align-items: center;
+    margin: 0 0 10px;
+  }
+
+  .filter-form :deep(.el-form-item__label) {
+    flex: 0 0 44px;
+    text-align: right;
+    padding-right: 8px;
+  }
+
+  .filter-form :deep(.el-form-item__content) {
+    flex: 1;
+    min-width: 0;
+  }
+
+  /* 品种 / 结果 / 日期范围：行内写死的 px 宽度改成占满一行 */
+  .filter-form :deep(.el-select),
+  .filter-form :deep(.el-date-editor),
+  .filter-form :deep(.el-date-editor .el-range-input) {
+    width: 100% !important;
+    min-width: 0;
+  }
+
+  .filter-form :deep(.el-date-editor .el-range-separator) {
+    padding: 0 4px;
+  }
+
+  .toolbar-right {
+    margin-left: 0;
+    width: 100%;
+    padding-bottom: 0;
+  }
+
+  .toolbar-right .el-button {
+    flex: 1;
+    margin-left: 0 !important;
+  }
+
+  .table-card :deep(.el-card__body) {
+    padding: 6px 8px 10px;
+  }
+
+  .pager {
+    justify-content: center;
+  }
+}
 </style>

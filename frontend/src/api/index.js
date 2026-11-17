@@ -75,3 +75,28 @@ export const deviceApi = {
   videoList: () => request.get('/api/device/videos'),
   deleteVideo: (name) => request.delete(`/api/device/videos/${encodeURIComponent(name)}`),
 }
+
+// 模型训练（真实图片）：上传样本、划分、训练、转 TFLite
+export const trainApi = {
+  // 数据集统计只是一次目录扫描，很快
+  dataset: () => request.get('/api/train/dataset'),
+
+  // 上传样本：多文件 + 类别，最大 30 张、单张 2MB，留足 60 秒
+  upload: (formData) => request.post('/api/train/upload', formData, { timeout: 60000 }),
+
+  // 划分数据集要跑一次 python 脚本，几十秒内完成，给到 180 秒
+  split: () => request.post('/api/train/split', {}, { timeout: 180000 }),
+
+  // 启动训练只是拉起子进程，接口本身秒回，真正耗时在后台
+  start: (params) => request.post('/api/train/start', params, { timeout: 30000 }),
+
+  // 状态轮询：读状态文件 + 日志尾部
+  status: () => request.get('/api/train/status'),
+  cancel: () => request.post('/api/train/cancel', {}, { timeout: 30000 }),
+
+  // 量化转换
+  convert: (calib = 100) =>
+    request.post('/api/train/convert', { calib }, { timeout: 30000 }),
+
+  models: () => request.get('/api/train/models'),
+}

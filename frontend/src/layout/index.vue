@@ -1,17 +1,21 @@
 <template>
   <div class="layout">
-    <aside class="sidebar" :class="{ collapsed }">
+    <!-- 手机端：侧栏变成覆盖式抽屉，点遮罩关闭 -->
+    <div v-if="mobileOpen" class="sidebar-mask" @click="mobileOpen = false"></div>
+
+    <aside class="sidebar" :class="{ collapsed, 'mobile-open': mobileOpen }">
       <div class="brand">
         <span class="brand-mark">F</span>
-        <span v-show="!collapsed" class="brand-text">果实分拣监控</span>
+        <span v-show="!collapsed || isMobile" class="brand-text">果实分拣监控</span>
       </div>
 
       <el-menu
         :default-active="activePath"
-        :collapse="collapsed"
+        :collapse="collapsed && !isMobile"
         :collapse-transition="false"
         router
         class="side-menu"
+        @select="onMenuSelect"
       >
         <el-menu-item index="/dashboard">
           <el-icon><Monitor /></el-icon>
@@ -39,20 +43,29 @@
         </el-menu-item>
       </el-menu>
 
-      <div v-show="!collapsed" class="version">OpenMV · ESP32</div>
+      <div v-show="!collapsed || isMobile" class="version">OpenMV · ESP32</div>
     </aside>
 
     <section class="main">
       <header class="topbar">
         <div class="topbar-left">
-          <el-button text class="collapse-btn" @click="collapsed = !collapsed">
-            <el-icon><Expand v-if="collapsed" /><Fold v-else /></el-icon>
+          <el-button text class="collapse-btn" @click="toggleSidebar">
+            <el-icon>
+              <Menu v-if="isMobile" />
+              <Expand v-else-if="collapsed" />
+              <Fold v-else />
+            </el-icon>
           </el-button>
           <span class="page-title">{{ route.meta.title }}</span>
         </div>
 
         <div class="topbar-right">
-          <el-tag :type="store.isAdmin ? 'primary' : 'info'" effect="light" size="small">
+          <el-tag
+            class="role-tag"
+            :type="store.isAdmin ? 'primary' : 'info'"
+            effect="light"
+            size="small"
+          >
             {{ store.roleText }}
           </el-tag>
           <el-dropdown trigger="click" @command="onCommand">
@@ -60,8 +73,8 @@
               <el-avatar :size="24" :src="avatarSrc" class="user-avatar">
                 {{ initial }}
               </el-avatar>
-              {{ store.username }}
-              <el-icon><ArrowDown /></el-icon>
+              <span class="name-text">{{ store.username }}</span>
+              <el-icon class="arrow-icon"><ArrowDown /></el-icon>
             </span>
             <template #dropdown>
               <el-dropdown-menu>
@@ -81,7 +94,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
@@ -93,6 +106,7 @@ import {
   User,
   Fold,
   Expand,
+  Menu,
   ArrowDown,
 } from '@element-plus/icons-vue'
 import { useUserStore } from '../store/user'
@@ -111,6 +125,44 @@ const initial = computed(() => (store.username || '?').slice(0, 1).toUpperCase()
 
 const collapsed = ref(false)
 const activePath = computed(() => route.path)
+
+// 手机屏幕：侧栏改抽屉，默认收起
+const isMobile = ref(false)
+const mobileOpen = ref(false)
+
+function syncViewport() {
+  isMobile.value = window.matchMedia('(max-width: 768px)').matches
+  if (!isMobile.value) mobileOpen.value = false
+}
+
+function toggleSidebar() {
+  if (isMobile.value) {
+    mobileOpen.value = !mobileOpen.value
+    return
+  }
+  collapsed.value = !collapsed.value
+}
+
+// 手机上点完菜单就收起抽屉
+function onMenuSelect() {
+  if (isMobile.value) mobileOpen.value = false
+}
+
+watch(
+  () => route.path,
+  () => {
+    if (isMobile.value) mobileOpen.value = false
+  }
+)
+
+onMounted(() => {
+  syncViewport()
+  window.addEventListener('resize', syncViewport)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('resize', syncViewport)
+})
 
 async function onCommand(command) {
   if (command === 'profile') {
@@ -145,7 +197,7 @@ async function onCommand(command) {
   background: var(--app-sidebar);
   display: flex;
   flex-direction: column;
-  transition: width 0.2s ease, flex-basis 0.2s ease;
+  transition: width 0.2s ease, flex-basis 0.2s ease, transform 0.25s ease;
   overflow: hidden;
 }
 
@@ -235,6 +287,9 @@ async function onCommand(command) {
 .page-title {
   font-size: 16px;
   font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .topbar-right {
@@ -264,5 +319,77 @@ async function onCommand(command) {
   flex: 1;
   overflow-y: auto;
   padding: 20px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.sidebar-mask {
+  display: none;
+}
+
+/* ---------- 手机 / 平板（≤768px） ---------- */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    z-index: 2000;
+    width: 220px;
+    flex: none;
+    transform: translateX(-100%);
+    box-shadow: 0 0 28px rgba(6, 20, 42, 0.28);
+  }
+
+  /* 抽屉展开时不跟随折叠态 */
+  .sidebar.collapsed {
+    width: 220px;
+    flex-basis: 220px;
+  }
+
+  .sidebar.mobile-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-mask {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 1999;
+    background: rgba(6, 20, 42, 0.45);
+    backdrop-filter: blur(1px);
+  }
+
+  .topbar {
+    height: 54px;
+    flex: 0 0 54px;
+    padding: 0 10px;
+  }
+
+  .page-title {
+    font-size: 15px;
+  }
+
+  .topbar-right {
+    gap: 8px;
+  }
+
+  /* 顶栏只留头像，腾出宽度给标题 */
+  .name-text {
+    display: none;
+  }
+
+  .arrow-icon {
+    display: none;
+  }
+
+  .content {
+    padding: 12px;
+  }
+}
+
+@media (max-width: 480px) {
+  .role-tag {
+    display: none;
+  }
 }
 </style>

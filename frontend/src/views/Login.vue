@@ -79,13 +79,14 @@ function submit() {
 
 <style scoped>
 .login-page {
-  height: 100%;
+  min-height: 100%;
+  padding: 24px 16px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: linear-gradient(135deg, #0b3d91 0%, #1677ff 55%, #4d94ff 100%);
   position: relative;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .login-page::before,
@@ -114,6 +115,7 @@ function submit() {
   position: relative;
   z-index: 1;
   width: 420px;
+  max-width: 100%;
   padding: 38px 36px 26px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.98);
@@ -156,6 +158,39 @@ function submit() {
   height: 44px;
   font-size: 15px;
   letter-spacing: 4px;
+}
+
+/* ---------- 手机适配 ---------- */
+@media (max-width: 480px) {
+  .login-page {
+    padding: 20px 14px;
+  }
+
+  .login-card {
+    width: 100%;
+    padding: 26px 20px 20px;
+    border-radius: 14px;
+  }
+
+  .brand {
+    margin-bottom: 20px;
+  }
+
+  .brand h1 {
+    font-size: 17px;
+    line-height: 1.4;
+  }
+
+  .brand p {
+    font-size: 11px;
+  }
+}
+
+/* 横屏 / 键盘弹出后高度很矮时，改为顶部对齐，避免卡片被裁 */
+@media (max-height: 560px) {
+  .login-page {
+    align-items: flex-start;
+  }
 }
 
 </style>
