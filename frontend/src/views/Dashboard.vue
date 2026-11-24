@@ -230,7 +230,22 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { VideoCamera } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
+// 按需引入：只打用到的柱状图、折线图和几个组件，
+// 避免把 echarts 全量（含地图、关系图、3D 等）打进首屏。
+import * as echarts from 'echarts/core'
+import { BarChart, LineChart } from 'echarts/charts'
+import { TooltipComponent, LegendComponent, GridComponent, AxisPointerComponent } from 'echarts/components'
+import { CanvasRenderer } from 'echarts/renderers'
+
+echarts.use([
+  BarChart,
+  LineChart,
+  TooltipComponent,
+  LegendComponent,
+  GridComponent,
+  AxisPointerComponent,
+  CanvasRenderer,
+])
 import { recordApi, deviceApi } from '../api'
 import { getSocket, closeSocket } from '../utils/socket'
 import { useUserStore } from '../store/user'

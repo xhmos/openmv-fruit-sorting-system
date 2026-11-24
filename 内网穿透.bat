@@ -1,108 +1,105 @@
 @echo off
 chcp 936 >nul
-setlocal
+setlocal enabledelayedexpansion
 cd /d "%~dp0"
-title OpenMV 果实分拣系统 - 对外演示
+title OpenMV 果实分拣系统 - 内网穿透（cpolar）
 
-echo ============================================
-echo    OpenMV 果实分拣系统 - 对外演示
-echo ============================================
-echo.
+set "CPOLAR=D:\cpolar\cpolar.exe"
+if not exist "%CPOLAR%" for /f "delims=" %%i in ('where cpolar 2^>nul') do set "CPOLAR=%%i"
+if not exist "%CPOLAR%" (
+  echo   没找到 cpolar.exe，请先安装：https://www.cpolar.com/
+  pause
+  exit /b 1
+)
 
-set "CF=%~dp0cloudflared.exe"
-set "DL=https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-amd64.exe"
 set "NODE=D:\5\node.exe"
 if not exist "%NODE%" set "NODE=node"
-
-rem ---- 模式：默认打包后的静态预览，手机加载快；传 dev 则穿透开发服务器方便调试
 set "MODE=prod"
 set "PORT=4173"
+set "PCMD=preview"
 if /i "%~1"=="dev" (
   set "MODE=dev"
   set "PORT=5173"
+  set "PCMD="
 )
 
-echo [模式] %MODE% 端口 %PORT%
-if "%MODE%"=="prod" echo         打包后的静态版本，别人打开快，适合对外演示
-if "%MODE%"=="dev" echo         开发服务器，热更新方便，但手机上加载慢
+set "LOGDIR=%~dp0logs"
+if not exist "%LOGDIR%" mkdir "%LOGDIR%"
+set "CLOG=%LOGDIR%\cpolar.log"
+set "PLOG=%LOGDIR%\preview.log"
+set "URLFILE=%~dp0公网地址.txt"
+
+echo ============================================
+echo    OpenMV 果实智能分拣系统 - 公网演示
+echo ============================================
+echo    [隧道] cpolar    [模式] %MODE%    端口 %PORT%
 echo.
 
-rem ---------- 1/4 工具 ----------
-if not exist "%CF%" (
-  echo [1/4] 首次运行，下载 cloudflared.exe，约 53MB，请稍等...
-  curl -L --max-time 600 -o "%CF%" "%DL%"
+
+if "%MODE%"=="prod" (
+  echo [1/3] 打包前端，首次约 30 秒...
+  pushd "%~dp0frontend"
+  "%NODE%" node_modules\vite\bin\vite.js build
   if errorlevel 1 (
-    echo.
-    echo   下载失败。请开加速器后重试，或手动下载：
-    echo   %DL%
-    echo   放到本文件同目录后重新双击。
+    popd
+    echo   打包失败，公网演示无法继续。
     pause
     exit /b 1
   )
-) else (
-  echo [1/4] cloudflared 已就绪
-)
-
-rem ---------- 2/4 打包 ----------
-echo [2/4] 打包前端，通常两三秒...
-if "%MODE%"=="prod" goto DO_BUILD
-echo       开发模式，跳过打包
-goto PORT_CHECK
-
-:DO_BUILD
-pushd "%~dp0frontend"
-"%NODE%" node_modules\vite\bin\vite.js build
-if errorlevel 1 (
   popd
-  echo.
-  echo   打包失败，把上面的报错发给我。
-  pause
-  exit /b 1
-)
-popd
-echo       打包完成
-
-rem ---------- 3/4 启动服务 ----------
-:PORT_CHECK
-echo [3/4] 检查端口 %PORT% ...
-netstat -ano | findstr /r /c:"TCP.*:%PORT%.*LISTENING" >nul
-if not errorlevel 1 (
-  echo       已在运行，直接复用
-  goto BACKEND_CHECK
+) else (
+  echo [1/3] 开发模式，跳过打包
 )
 
-echo       未运行，正在启动服务...
-if "%MODE%"=="prod" start "" /min /d "%~dp0frontend" "%NODE%" node_modules\vite\bin\vite.js preview --host 0.0.0.0 --port %PORT%
-if "%MODE%"=="dev" start "" /min /d "%~dp0frontend" "%NODE%" node_modules\vite\bin\vite.js --host 0.0.0.0 --port %PORT%
-timeout /t 6 /nobreak >nul
-
+echo [2/3] 检查 %PORT% 端口...
 netstat -ano | findstr /r /c:"TCP.*:%PORT%.*LISTENING" >nul
 if errorlevel 1 (
-  echo.
-  echo   端口 %PORT% 没起来。多半是 node 路径不对，当前用的是 %NODE%
-  pause
-  exit /b 1
+  echo       未运行，正在后台启动前端...
+  start /b "" "%NODE%" node_modules\vite\bin\vite.js %PCMD% --host 0.0.0.0 --port %PORT% > "%PLOG%" 2>&1
+  timeout /t 7 /nobreak >nul
+  netstat -ano | findstr /r /c:"TCP.*:%PORT%.*LISTENING" >nul
+  if errorlevel 1 (
+    echo       启动失败，日志见 logs\preview.log
+    pause
+    exit /b 1
+  )
 )
-echo       服务已就绪
+echo       前端已就绪
 
-:BACKEND_CHECK
 netstat -ano | findstr /r /c:"TCP.*:5000.*LISTENING" >nul
 if errorlevel 1 (
-  echo.
-  echo   [注意] 后端 5000 没在运行，页面能打开但登录会失败。
-  echo          请先双击「启动系统.bat」把 MySQL 和后端拉起来。
-  echo.
+  echo [注意] 后端 5000 没在运行，登录会失败，请先运行 启动系统.bat
 )
 
-rem ---------- 4/4 隧道 ----------
-echo [4/4] 建立隧道...
-echo.
-echo   下面那行 https://xxxx.trycloudflare.com 就是公网地址
-echo   发给别人，手机用流量也能直接打开
-echo   关掉这个窗口 = 断开隧道
-echo --------------------------------------------
-"%CF%" tunnel --url http://127.0.0.1:%PORT% --no-autoupdate
+echo [3/3] 建立 cpolar 隧道，等待公网地址...
+if exist "%CLOG%" del "%CLOG%"
+powershell -NoProfile -Command "Start-Process -FilePath '%CPOLAR%' -ArgumentList 'http','%PORT%','--log=stdout' -RedirectStandardOutput '%CLOG%' -RedirectStandardError '%CLOG%.err' -NoNewWindow"
 
+set "URL="
+for /f "delims=" %%u in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\get_cpolar_url.ps1" -LogPath "%CLOG%"') do set "URL=%%u"
+
+if not defined URL (
+  echo.
+  echo   没能拿到地址，最后 15 行日志：
+  powershell -NoProfile -Command "Get-Content -Path '%CLOG%' -Tail 15"
+  echo.
+  echo   常见原因：
+  echo     1. 免费版同时只能跑 2 条隧道，先在 cpolar 后台停掉不用的；
+  echo     2. 刚重启过，等 30 秒再试；
+  echo     3. 账号 authtoken 失效，去 cpolar 后台重新复制并执行 cpolar authtoken xxx。
+  pause
+  exit /b 1
+)
+
+> "%URLFILE%" echo %URL%
 echo.
-echo 隧道已结束。
+echo   ==================================================
+echo     公网地址： %URL%
+echo   ==================================================
+echo     已保存到： 公网地址.txt
+echo     手机用流量即可打开，电脑也可以。
+echo     这个窗口不要关，关掉后地址立即失效。
+echo.
 pause
+echo 关闭本窗口即断开隧道。
+endlocal

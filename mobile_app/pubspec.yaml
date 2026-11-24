@@ -1,0 +1,33 @@
+name: fruit_sorting_app
+description: "果实分拣系统手机端"
+publish_to: 'none'
+
+# 版本号：1.0.0 + 构建号 1
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.14.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+  # 后端接口请求
+  http: ^1.2.2
+  # 本地保存服务器地址、登录令牌
+  shared_preferences: ^2.3.2
+  # 趋势曲线
+  fl_chart: ^0.69.2
+  # SocketIO 实时推送（新记录 / 新画面）
+  socket_io_client: ^2.0.3+1
+  # 头像选择
+  image_picker: ^1.1.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

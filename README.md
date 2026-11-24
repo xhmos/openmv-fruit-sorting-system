@@ -49,6 +49,22 @@
 **硬件前提**：只有 **H7 Plus / RT1062（32MB SDRAM）** 能跑模型，标准 H7 仅 1MB SRAM 会 `MemoryError`。
 
 
+## 公网演示（cpolar）
+
+`内网穿透.bat` 默认走 cpolar（本机 `D:\cpolar\cpolar.exe`，已配置 authtoken）：
+
+1. 双击 `内网穿透.bat`：打包前端 → 起 4173 预览 → 建立 cpolar 隧道；
+2. 窗口直接打印「公网地址：https://xxxx.cpolar.cn」，同时写入根目录 `公网地址.txt`；
+3. 手机用流量即可打开；关闭该窗口隧道即断开，地址失效。
+
+注意：
+
+- cpolar 免费版是随机子域，重启一次换一个地址，别把旧地址发给别人；
+- 免费版并发隧道数量有限，`cpolar.yml` 里已有 remoteDesktop(3389) 与 website(8080)，演示前可先停掉不用的；
+- `frontend/vite.config.js` 的 `allowedHosts` 已放行 `.cpolar.top` / `.cpolar.cn`，换其他域名要加进去，否则会返回 403 白页；
+- Cloudflare 的 `trycloudflare.com` 快速隧道按 IP 限流（429），已不作为主用方案。
+
+
 ## 技术栈
 
 **后端**：Flask、Flask-SQLAlchemy、Flask-JWT-Extended、Flask-SocketIO、waitress、PyMySQL、OpenCV（headless）、openpyxl

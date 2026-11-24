@@ -12,7 +12,7 @@ const PROXY = {
 
 // 内网穿透的域名每次随机，按后缀放行 trycloudflare 的子域。
 // Vite 6 以后对陌生 Host 头会直接返回 403，不加这行穿透进来就是白页。
-const ALLOWED_HOSTS = ['.trycloudflare.com']
+const ALLOWED_HOSTS = ['.trycloudflare.com', '.cpolar.top', '.cpolar.cn']
 
 // https://vite.dev/config/
 export default defineConfig({

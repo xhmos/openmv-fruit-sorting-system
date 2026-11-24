@@ -55,3 +55,10 @@ desktop.ini
 .idea/
 *.tmp
 *.bak
+
+# ===== 内网穿透运行时产物 =====
+logs/
+# 每次启动都会变的临时公网地址，属于本机运行态
+公网地址.txt
+# 本项目打出的安装包体积大，需要时用 flutter build apk 重新生成
+*.apk
