@@ -20,7 +20,7 @@ set "PCMD=preview"
 if /i "%~1"=="dev" (
   set "MODE=dev"
   set "PORT=5173"
-  set "PCMD="
+  set "PCMD=dev"
 )
 
 set "LOGDIR=%~dp0logs"
@@ -28,6 +28,8 @@ if not exist "%LOGDIR%" mkdir "%LOGDIR%"
 set "CLOG=%LOGDIR%\cpolar.log"
 set "PLOG=%LOGDIR%\preview.log"
 set "URLFILE=%~dp0公网地址.txt"
+set "URLTMP=%LOGDIR%\url.tmp"
+set "PS=%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe"
 
 echo ============================================
 echo    OpenMV 果实智能分拣系统 - 公网演示
@@ -52,12 +54,12 @@ if "%MODE%"=="prod" (
 )
 
 echo [2/3] 检查 %PORT% 端口...
-netstat -ano | findstr /r /c:"TCP.*:%PORT%.*LISTENING" >nul
+"%SystemRoot%\System32\netstat.exe" -ano | "%SystemRoot%\System32\findstr.exe" /r /c:"TCP.*:%PORT%.*LISTENING" >nul
 if errorlevel 1 (
   echo       未运行，正在后台启动前端...
-  start /b "" "%NODE%" node_modules\vite\bin\vite.js %PCMD% --host 0.0.0.0 --port %PORT% > "%PLOG%" 2>&1
-  timeout /t 7 /nobreak >nul
-  netstat -ano | findstr /r /c:"TCP.*:%PORT%.*LISTENING" >nul
+  start "" /b /d "%~dp0frontend" "%NODE%" node_modules\vite\bin\vite.js %PCMD% --host 0.0.0.0 --port %PORT% > "%PLOG%" 2>&1
+  "%SystemRoot%\System32\timeout.exe" /t 7 /nobreak >nul
+  "%SystemRoot%\System32\netstat.exe" -ano | "%SystemRoot%\System32\findstr.exe" /r /c:"TCP.*:%PORT%.*LISTENING" >nul
   if errorlevel 1 (
     echo       启动失败，日志见 logs\preview.log
     pause
@@ -66,17 +68,19 @@ if errorlevel 1 (
 )
 echo       前端已就绪
 
-netstat -ano | findstr /r /c:"TCP.*:5000.*LISTENING" >nul
+"%SystemRoot%\System32\netstat.exe" -ano | "%SystemRoot%\System32\findstr.exe" /r /c:"TCP.*:5000.*LISTENING" >nul
 if errorlevel 1 (
   echo [注意] 后端 5000 没在运行，登录会失败，请先运行 启动系统.bat
 )
 
 echo [3/3] 建立 cpolar 隧道，等待公网地址...
 if exist "%CLOG%" del "%CLOG%"
-powershell -NoProfile -Command "Start-Process -FilePath '%CPOLAR%' -ArgumentList 'http','%PORT%','--log=stdout' -RedirectStandardOutput '%CLOG%' -RedirectStandardError '%CLOG%.err' -NoNewWindow"
+start /b "" "%CPOLAR%" http %PORT% --log=stdout > "%CLOG%" 2>&1
 
+if exist "%URLTMP%" del "%URLTMP%"
+"%PS%" -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\get_cpolar_url.ps1" -LogPath "%CLOG%" -OutFile "%URLTMP%"
 set "URL="
-for /f "delims=" %%u in ('powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\get_cpolar_url.ps1" -LogPath "%CLOG%"') do set "URL=%%u"
+if exist "%URLTMP%" set /p URL=<"%URLTMP%"
 
 if not defined URL (
   echo.
