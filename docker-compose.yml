@@ -1,0 +1,43 @@
+# OpenMV 果实分拣系统 —— Docker 编排
+# 包含：后端 Flask 容器、前端 Nginx 容器；MySQL 使用服务器本机已安装的数据库。
+
+services:
+  # ---------- 后端服务 ----------
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: fruit-backend
+    # 数据库连本机宿主机 MySQL：Linux 下用 host.docker.internal 指向宿主机
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # 数据库连接参数来自根目录 .env（密码中的 $ 已在 .env 用 $$ 转义）
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_HOST: host.docker.internal
+      DB_PORT: "3306"
+      DB_NAME: ${DB_NAME}
+      FLASK_DEBUG: "0"
+      HOST: 0.0.0.0
+      PORT: "5000"
+    volumes:
+      # 上传图片持久化到宿主机，容器重建不丢图
+      - ./backend/uploads:/app/backend/uploads
+    restart: unless-stopped
+    # 后端端口不对公网直接暴露，由前端 Nginx 反代；如需调试可放开 5000
+    expose:
+      - "5000"
+
+  # ---------- 前端服务（Nginx 托管静态文件 + 反代后端） ----------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: fruit-frontend
+    ports:
+      # 宿主机 4173 -> 容器 80，公网通过 http://服务器IP:4173 访问
+      - "4173:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

@@ -1,0 +1,10 @@
+# 后端打包进镜像时排除的内容
+venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+logs/
+uploads/
+tests/
+.pytest_cache/
+.env

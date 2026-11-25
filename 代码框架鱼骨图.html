@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>代码框架鱼骨图 · Fishbone Diagram</title>
+<style>
+:root{
+  --bg:#0b1120; --panel:#111c33; --panel-2:#16233f; --line:#2a3b5f;
+  --ink:#e6edf7; --soft:#9fb2d1; --dim:#6b7fa3;
+  --blue:#3b82f6; --green:#22c55e; --purple:#a855f7; --amber:#f59e0b; --cyan:#06b6d4;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:"Noto Sans SC","Microsoft YaHei",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:var(--bg);color:var(--ink);line-height:1.6;min-height:100vh;
+}
+.wrap{max-width:1280px;margin:0 auto;padding:0 22px 60px}
+
+header{padding:36px 0 16px;text-align:center}
+header .tag{display:inline-block;font-size:12.5px;color:var(--cyan);border:1px solid var(--line);border-radius:999px;padding:4px 14px;margin-bottom:12px}
+header h1{font-size:clamp(22px,3vw,30px);font-weight:800}
+header h1 .en{display:block;font-size:14px;color:var(--soft);font-weight:500;margin-top:6px}
+header p{max-width:780px;margin:12px auto 0;color:var(--soft);font-size:14px}
+
+/* 图表区 */
+#fishbone{width:100%;height:560px;background:var(--panel);border:1px solid var(--line);border-radius:16px;margin-top:22px}
+
+/* 下方详情面板 */
+.detail{margin-top:22px;background:var(--panel-2);border:1px solid var(--line);border-radius:16px;padding:24px}
+.detail .crumb{font-size:12px;color:var(--dim)}
+.detail h2{font-size:20px;margin:6px 0 4px}
+.detail .en{font-size:13px;color:var(--soft)}
+.detail .desc{color:var(--soft);font-size:14px;margin:12px 0}
+.detail .edge-path{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0 0}
+.detail .edge-path .node-chip{font-size:13px;padding:5px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.detail .edge-path .arrow{color:var(--cyan)}
+.detail .sec-label{font-size:12px;color:var(--dim);letter-spacing:.5px;margin:16px 0 8px}
+.detail-steps{list-style:none;counter-reset:d}
+.detail-steps li{position:relative;padding:11px 0 11px 38px;border-bottom:1px dashed var(--line);counter-increment:d}
+.detail-steps li:last-child{border-bottom:0}
+.detail-steps li::before{content:counter(d);position:absolute;left:0;top:11px;width:24px;height:24px;border-radius:8px;background:var(--blue);color:#fff;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center}
+.detail-steps li b{display:block;font-size:14px}
+.detail-steps li .d-en{font-size:12px;color:var(--soft);margin-top:2px}
+.detail-steps li .d-note{font-size:12.5px;color:var(--dim);margin-top:4px}
+.link-tags{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}
+.link-tags code{font-family:Consolas,monospace;font-size:12px;color:var(--cyan);background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:5px 10px}
+.placeholder{color:var(--dim);font-size:14px;text-align:center;padding:30px 0}
+
+/* 代码块 */
+.code-wrap{margin-top:10px;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.code-head{display:flex;align-items:center;gap:10px;padding:9px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.code-head .lang{font-size:11.5px;font-weight:700;color:#0b1120;background:var(--cyan);border-radius:6px;padding:2px 9px}
+.code-head .ctitle{font-size:13px;color:var(--soft)}
+.code-block{font-family:Consolas,"Courier New",monospace;font-size:12.5px;line-height:1.7;padding:16px 18px;overflow:auto;background:#0a1322;color:#d7e6ff;white-space:pre}
+.code-block .cm{color:#6b7fa3}
+
+.legend{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;margin-top:16px;font-size:13px;color:var(--soft)}
+.legend .item{display:flex;align-items:center;gap:8px}
+.dot{width:12px;height:12px;border-radius:4px;display:inline-block}
+.c-blue{background:var(--blue)} .c-green{background:var(--green)} .c-purple{background:var(--purple)}
+.c-amber{background:var(--amber)} .c-cyan{background:var(--cyan)}
+
+.hint{margin-top:12px;text-align:center;font-size:12.5px;color:var(--dim)}
+.hint b{color:var(--soft)}
+
+/* 连接关系可点击清单（tree 连线本身不派发点击事件，用 DOM 条目兜底） */
+.edges-panel{margin-top:18px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 22px}
+.edges-panel .ep-label{font-size:12px;color:var(--dim);letter-spacing:.5px;margin-bottom:12px}
+.edges-list{display:flex;flex-wrap:wrap;gap:10px}
+.edge-chip{font-family:inherit;font-size:12.5px;color:var(--ink);background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:9px 13px;cursor:pointer;transition:border-color .15s,background .15s}
+.edge-chip .ec-path{color:var(--cyan);margin-right:8px}
+.edge-chip:hover{border-color:var(--cyan);background:var(--panel-2)}
+.edge-chip.active{border-color:var(--blue);background:#1c2f52;color:#fff}
+.edge-chip.active .ec-path{color:#93c5fd}
+
+footer{text-align:center;color:var(--dim);font-size:12.5px;margin-top:36px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <span class="tag">OpenMV 果实智能分拣系统 · 代码架构鱼骨图</span>
+    <h1>项目代码框架鱼骨图<span class="en">Code Framework Fishbone Diagram</span></h1>
+    <p>主干为整套系统，两侧分出后端、前端、数据、设备、部署五个分支。<b>点击节点</b>查看该模块的骨架代码与注释；<b>点击连线</b>查看两端是如何连接调用的。</p>
+  </header>
+
+  <div class="legend">
+    <span class="item"><span class="dot c-blue"></span>后端服务</span>
+    <span class="item"><span class="dot c-amber"></span>前端界面</span>
+    <span class="item"><span class="dot c-green"></span>数据存储</span>
+    <span class="item"><span class="dot c-purple"></span>设备硬件</span>
+    <span class="item"><span class="dot c-cyan"></span>部署移动端</span>
+  </div>
+
+  <div id="fishbone"></div>
+  <div class="hint">提示：节点可展开 / 收起，图表可拖拽缩放；<b>点节点看模块骨架，点下方连接关系看两端连接代码</b>。</div>
+
+  <div class="edges-panel">
+    <div class="ep-label">连接关系 · 点击任意条目查看两端是如何连接调用的</div>
+    <div class="edges-list" id="edgesList"></div>
+  </div>
+
+  <section class="detail">
+    <div class="crumb" id="crumb">节点详情 · Node detail</div>
+    <h2 id="detailTitle">点击鱼骨图上的任意节点或连线</h2>
+    <div class="en" id="detailEn">Click any node or link on the fishbone</div>
+    <p class="desc" id="detailDesc">这里会显示该模块负责什么、具体做哪些步骤、连接的代码文件，以及带注释的框架骨架；选中连线时则展示两端之间的连接实现代码。</p>
+
+    <div class="edge-path" id="edgePath" style="display:none"></div>
+
+    <div class="sec-label" id="stepsLabel" style="display:none">具体步骤 · Steps</div>
+    <ul class="detail-steps" id="stepsList"></ul>
+
+    <div class="sec-label" id="filesLabel" style="display:none">连接文件 · Connected files</div>
+    <div class="link-tags" id="filesTags"></div>
+
+    <div class="sec-label" id="codeLabel" style="display:none">骨架代码 · Skeleton（框架结构 + 注释，业务细节留占位）</div>
+    <div class="code-wrap" id="codeWrap" style="display:none">
+      <div class="code-head"><span class="lang" id="codeLang"></span><span class="ctitle" id="codeTitle"></span></div>
+      <pre class="code-block" id="codeBody"></pre>
+    </div>
+  </section>
+
+  <footer>Flask 后端 · Vue 3 前端 · MySQL 8 · SocketIO 实时推送</footer>
+</div>
+
+<script src="assets/echarts.min.js"></script>
+<script>
+/* ================= 工具：HTML 转义 ================= */
+function esc(s){
+  return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+}
+
+/* ================= 数据：主干 → 一级分支 → 二级节点 ================= */
+/* 每个 leaf 可选 code：{ lang, title, body:[行...] } 带注释的骨架代码 */
+var DATA = [
+  {
+    id:"backend", color:"#3b82f6",
+    title:"后端服务", en:"Backend (Flask)",
+    summary:"接收接口请求、鉴权校验、调用采集与模型、读写数据库、实时推送。",
+    children:[
+      { id:"entry", title:"应用入口 app.py", en:"App entry", desc:"装配扩展、注册蓝图、建表与初始管理员",
+        steps:[
+          { b:"创建 Flask 应用并读取 config.py 配置", en:"Create Flask app and load config", note:"初始化日志与上传目录" },
+          { b:"在 extensions.py 初始化 db / bcrypt / socketio / limiter", en:"Init extensions", note:"集中定义避免循环导入" },
+          { b:"注册 7 组蓝图到 /api/... 前缀", en:"Register blueprints", note:"auth / device / record / setting / system / train / user" },
+          { b:"SocketIO connect 事件校验 JWT 与账号状态", en:"SocketIO auth check", note:"令牌无效或账号禁用则拒绝连接" },
+          { b:"db.create_all() 建表，首次启动创建默认管理员", en:"Create tables & seed admin", note:"管理员账号由配置生成" }
+        ], links:["app.py","extensions.py","config.py"],
+        code:{ lang:"Python", title:"应用工厂骨架 app.py", body:[
+          "# 1. 创建应用并加载配置",
+          "app = Flask(__name__)",
+          "app.config.from_object(Config)",
+          "",
+          "# 2. 初始化集中定义的扩展（在 extensions.py 声明，避免循环导入）",
+          "db.init_app(app)",
+          "bcrypt.init_app(app)",
+          "limiter.init_app(app)",
+          "socketio.init_app(app, cors_allowed_origins=...)",
+          "",
+          "# 3. 注册蓝图：不同业务分组挂到 /api/xxx 前缀下",
+          "app.register_blueprint(auth_bp,   url_prefix=\"/api/auth\")",
+          "app.register_blueprint(device_bp, url_prefix=\"/api/device\")",
+          "# ……其余 5 组蓝图（record/setting/system/train/user）同理注册……",
+          "",
+          "# 4. SocketIO 握手鉴权：连接时校验 JWT，无效则拒绝",
+          "@socketio.on(\"connect\")",
+          "def _check_socket_auth(auth):",
+          "    # 取出 token → decode_token → 查库确认账号存在且启用",
+          "    # 不通过 return False；通过 return True",
+          "",
+          "# 5. 建表并写入默认管理员（首次启动幂等执行）",
+          "with app.app_context():",
+          "    db.create_all()",
+          "    _seed_admin(app)",
+          "",
+          "# 6. 部署入口：gunicorn + eventlet 运行（wsgi.py 内调 create_app）"
+        ]} },
+      { id:"routes", title:"路由层 routes/", en:"Route layer", desc:"分组处理 HTTP 请求，参数校验后调用服务或模型",
+        steps:[
+          { b:"auth.py：登录 / 当前用户 / 登出 / 头像", en:"Auth routes", note:"配合 security.py 签发 JWT" },
+          { b:"device.py：上报 / 实时帧 / MJPEG 流 / 摄像头启停 / 录像", en:"Device routes", note:"调用 camera_service 并推送看板" },
+          { b:"record.py：记录列表 / 统计 / 删除 / 导出 Excel", en:"Record routes", note:"读写 SortRecord" },
+          { b:"setting.py：HSV 阈值 / 面积 / 置信度 / 冷却时间", en:"Setting routes", note:"读写 SysSetting" },
+          { b:"system.py：扫描设备、已保存设备连接与探测", en:"System routes", note:"摄像头 / 串口 / 网络流" },
+          { b:"user.py：用户增删改、启停、改密、设角色", en:"User routes", note:"除列表外均要求管理员" },
+          { b:"train.py：样本上传 / 划分 / 训练 / 转 TFLite", en:"Training routes", note:"容器内无 TensorFlow 时不可用" }
+        ], links:["routes/auth.py","routes/device.py","routes/record.py","routes/setting.py","routes/system.py","routes/user.py","routes/train.py"],
+        code:{ lang:"Python", title:"蓝图路由骨架（单组示例）", body:[
+          "from flask import Blueprint, jsonify, request",
+          "from utils.security import login_required, admin_required, device_required",
+          "",
+          "# ① 生成本组蓝图对象",
+          "xxx_bp = Blueprint(\"xxx\", __name__)",
+          "",
+          "# ② 一个接口 = 一个路由函数；装饰器决定需要哪种鉴权",
+          "@xxx_bp.post(\"/report\")",
+          "@device_required          # 设备令牌；用户接口用 login_required / admin_required",
+          "def report():",
+          "    # 1) 取参并做合法性校验（白名单、数值区间、文本过滤）",
+          "    # 2) 调用服务层 / 模型层完成业务",
+          "    # 3) 统一返回：jsonify(code=0, msg=\"...\", data=...)",
+          "    return jsonify(code=0, msg=\"上报成功\", data=payload), 201"
+        ]} },
+      { id:"service", title:"采集服务 camera_service", en:"Camera service", desc:"后台线程抓帧、HSV 识别、命中存图与录像",
+        steps:[
+          { b:"启动后台线程循环从摄像头取帧", en:"Capture frames in thread", note:"画面先放内存，不落盘" },
+          { b:"转 HSV 并遍历 FRUITS 预设找最大色块", en:"HSV color detection", note:"判定品种 / 置信度 / 面积 / 外框" },
+          { b:"命中且开关打开：存证据图、写分拣记录", en:"Snapshot & record on hit", note:"snapshot 开关控制" },
+          { b:"录像为独立开关：命中前缓冲 + 之后 2 秒", en:"Recording buffer", note:"与截图互不影响" },
+          { b:"latest_jpeg() 供 /live 接口推内存帧给浏览器", en:"Memory frame for MJPEG", note:"避免写盘" }
+        ], links:["services/camera_service.py"],
+        code:{ lang:"Python", title:"后台采集服务骨架", body:[
+          "import threading, time",
+          "",
+          "class CameraService:",
+          "    def __init__(self):",
+          "        self._thread = None        # 后台抓帧线程",
+          "        self._running = False",
+          "        self._last_frame = None    # 内存帧缓存，供 /live 出流，不落盘",
+          "",
+          "    def start(self):",
+          "        # 启动一个守护线程跑 loop()",
+          "        self._thread = threading.Thread(target=self.loop, daemon=True)",
+          "        self._thread.start()",
+          "",
+          "    def loop(self):",
+          "        while self._running:",
+          "            frame = self._capture()     # 1) 抓帧",
+          "            # 2) 转 HSV，遍历水果预设找最大色块 → 品种/置信度/面积",
+          "            # 3) 命中：存证据图、写 SortRecord、emit new_record",
+          "            # 4) 录像缓冲 / 截图开关各自独立",
+          "            self._last_frame = frame",
+          "",
+          "    def latest_jpeg(self):",
+          "        return self._last_frame      # 供 MJPEG 接口循环读取"
+        ]} },
+      { id:"utils", title:"工具与清理 utils/", en:"Utils", desc:"安全鉴权、导出、日志、后台图片清理",
+        steps:[
+          { b:"security.py：JWT 签发校验、权限装饰器、文本过滤、图片校验", en:"Security utils", note:"login/admin/device_required" },
+          { b:"housekeeping.py：后台线程清理过期图片与超额截图", en:"Housekeeping", note:"保留 90 天 / 上限 2000 张" },
+          { b:"export_excel.py：分拣记录导出 Excel", en:"Excel export", note:"openpyxl" },
+          { b:"applog.py：日志初始化与 handler 挂载", en:"Logging", note:"全模块复用同一套日志" }
+        ], links:["utils/security.py","utils/housekeeping.py","utils/export_excel.py","utils/applog.py"],
+        code:{ lang:"Python", title:"鉴权装饰器节选骨架", body:[
+          "# 鉴权装饰器：从请求头取 Bearer token → 解码 → 查库 → 挂到 g.user",
+          "def login_required(fn):",
+          "    @wraps(fn)",
+          "    def wrapper(*args, **kwargs):",
+          "        token = request.headers.get(\"Authorization\", \"\")",
+          "        # 解码失败 / 用户不存在 / 被禁用 → 401",
+          "        # 通过则 g.user = 用户对象，继续执行原接口",
+          "        return fn(*args, **kwargs)",
+          "    return wrapper",
+          "",
+          "# admin_required：在登录校验基础上再判断 g.user.role == \"admin\"",
+          "# device_required：校验设备专用 DEVICE_TOKEN，给板端上报用",
+          "# 其余工具：sanitize_text 文本过滤、save_upload_image 图片校验保存、",
+          "#           write_operation_log 操作审计"
+        ]} }
+    ]
+  },
+  {
+    id:"frontend", color:"#f59e0b",
+    title:"前端界面", en:"Frontend (Vue 3)",
+    summary:"页面展示、用户操作、接口调用与实时连接接收。",
+    children:[
+      { id:"views", title:"页面视图 views/", en:"Views", desc:"七大页面对应不同业务功能",
+        steps:[
+          { b:"Login.vue：登录页，提交账号密码换取 token", en:"Login view", note:"登录后跳转看板" },
+          { b:"Dashboard.vue：实时看板，画面 / 统计卡片 / 趋势图", en:"Dashboard", note:"监听 new_record / live_frame" },
+          { b:"Record.vue：分拣记录列表、筛选、图片查看、导出", en:"Records view", note:"批量删除" },
+          { b:"Device.vue：设备扫描、已保存设备、连接与探测", en:"Device view", note:"摄像头 / 串口 / 网络流" },
+          { b:"Setting.vue：识别参数在线调整", en:"Setting view", note:"阈值 / 面积 / 置信度 / 冷却" },
+          { b:"UserManage.vue：用户管理（管理员）", en:"User manage", note:"增删改 / 角色 / 启停" },
+          { b:"Profile.vue：个人中心、头像上传更换", en:"Profile", note:"账号信息查看" }
+        ], links:["views/Login.vue","views/Dashboard.vue","views/Record.vue","views/Device.vue","views/Setting.vue","views/UserManage.vue","views/Profile.vue"],
+        code:{ lang:"Vue", title:"单页面组件 SFC 骨架", body:[
+          "<template>",
+          "  <!-- 页面结构：表单 / 卡片 / 表格，数据双向绑定到 form -->",
+          "  <el-form :model=\"form\" @submit=\"submit\">",
+          "    <el-button :loading=\"loading\" @click=\"submit\">提交</el-button>",
+          "  </el-form>",
+          "</template>",
+          "",
+          "<script setup>",
+          "import { ref, reactive } from 'vue'",
+          "import { useRouter } from 'vue-router'",
+          "import { recordApi } from '../api'   // 调用封装好的接口",
+          "",
+          "const router = useRouter()",
+          "const loading = ref(false)",
+          "const form = reactive({ /* 页面表单字段 */ })",
+          "",
+          "// 页面动作：调 api 方法 → 成功跳页 / 刷新列表，错误由拦截器统一提示",
+          "async function submit() {",
+          "  // await recordApi.xxx(form)",
+          "}",
+          "</" + "script>",
+          "",
+          "<style scoped>",
+          "/* 仅当前页面生效的样式 */",
+          "</style>"
+        ]} },
+      { id:"api", title:"接口封装 api/", en:"API layer", desc:"axios 统一带 token、处理响应与错误",
+        steps:[
+          { b:"request.js：axios 实例、token 注入、响应 / 错误拦截", en:"Axios instance", note:"统一异常提示" },
+          { b:"index.js：按模块导出 auth / record / setting / user / system / device / train 方法", en:"API methods", note:"每个方法对应一个后端接口" }
+        ], links:["api/request.js","api/index.js"],
+        code:{ lang:"JavaScript", title:"axios 实例 + 接口方法封装", body:[
+          "// request.js：创建全局 axios 实例并挂拦截器",
+          "import axios from 'axios'",
+          "import { API_BASE } from '../config'",
+          "",
+          "const request = axios.create({ baseURL: API_BASE, timeout: 15000 })",
+          "",
+          "// 请求拦截：每次自动带上登录 token",
+          "request.interceptors.request.use((config) => {",
+          "  const token = localStorage.getItem('token')",
+          "  if (token) config.headers.Authorization = `Bearer ${token}`",
+          "  return config",
+          "})",
+          "",
+          "// 响应拦截：统一拆包(code!==0 报错)、401 清登录态跳登录、分类提示",
+          "request.interceptors.response.use(",
+          "  (res) => (res.config.responseType === 'blob' ? res : res.data),",
+          "  (error) => { /* 401/403/429/400 分类提示 */ return Promise.reject(error) }",
+          ")",
+          "",
+          "// index.js：按业务分组导出，每个方法对应后端一个接口",
+          "export const recordApi = {",
+          "  list:    (params) => request.get('/api/record/list', { params }),",
+          "  stats:   (days)   => request.get('/api/record/stats', { params: { days } }),",
+          "  remove:  (id)     => request.delete(`/api/record/${id}`),",
+          "  exportExcel: (params) => request.get('/api/record/export', { params, responseType: 'blob' }),",
+          "  // ……auth/setting/user/system/device/train 各组同理……",
+          "}"
+        ]} },
+      { id:"router", title:"路由与状态", en:"Router & store", desc:"hash 路由、登录与管理员守卫、登录态存储",
+        steps:[
+          { b:"router/index.js：路由表 + beforeEach 守卫", en:"Router guard", note:"未登录跳登录，非管理员拦截用户管理" },
+          { b:"store/user.js：登录态、token、isAdmin 判断", en:"User store", note:"localStorage 持久化 token" },
+          { b:"config.js：接口地址与 Socket 地址配置", en:"Config", note:"默认同源相对路径" }
+        ], links:["router/index.js","store/user.js","config.js"],
+        code:{ lang:"JavaScript", title:"路由表 + 全局守卫骨架", body:[
+          "import { createRouter, createWebHashHistory } from 'vue-router'",
+          "import { useUserStore } from '../store/user'",
+          "",
+          "const routes = [",
+          "  { path: '/login', component: () => import('../views/Login.vue'), meta: { public: true } },",
+          "  { path: '/', component: () => import('../layout/index.vue'), redirect: '/dashboard',",
+          "    children: [",
+          "      { path: 'dashboard', component: () => import('../views/Dashboard.vue') },",
+          "      { path: 'user',      component: () => import('../views/UserManage.vue'), meta: { admin: true } },",
+          "      // ……其余页面路由……",
+          "    ] },",
+          "]",
+          "",
+          "const router = createRouter({ history: createWebHashHistory(), routes })",
+          "",
+          "// 全局守卫：未登录跳登录；非管理员拦截 admin 页面（真正权限以后端为准）",
+          "router.beforeEach((to) => {",
+          "  const store = useUserStore()",
+          "  if (to.meta.public) return true",
+          "  if (!store.isLogin) return { path: '/login', query: { redirect: to.fullPath } }",
+          "  if (to.meta.admin && !store.isAdmin) return { path: '/dashboard' }",
+          "  return true",
+          "})",
+          "",
+          "export default router"
+        ]} },
+      { id:"socket", title:"实时连接 socket.js", en:"Socket client", desc:"全局单例 SocketIO，握手带 JWT，自动重连",
+        steps:[
+          { b:"getSocket() 复用一条全局连接，auth 带 token", en:"Single socket instance", note:"transports: polling → websocket" },
+          { b:"鉴权被拒（缺失 / 过期 / 禁用）则断开，不无限重连", en:"Reject handling", note:"避免刷服务器日志" },
+          { b:"closeSocket() 移除监听并断开，释放连接", en:"Close socket", note:"登出时调用" }
+        ], links:["utils/socket.js"],
+        code:{ lang:"JavaScript", title:"SocketIO 客户端单例骨架", body:[
+          "import { io } from 'socket.io-client'",
+          "import { SOCKET_URL } from '../config'",
+          "",
+          "let socket = null   // 全局单例，避免重复建连",
+          "",
+          "export function getSocket() {",
+          "  if (socket) return socket",
+          "  const token = localStorage.getItem('token') || ''",
+          "  socket = io(SOCKET_URL, {",
+          "    transports: ['polling', 'websocket'],  // 先 polling 建连再升级",
+          "    auth: { token },                        // 握手带 JWT，后端 connect 校验",
+          "    reconnection: true,",
+          "  })",
+          "  // 鉴权被拒则断开，不无限重连",
+          "  socket.on('connect_error', (e) => {",
+          "    if (/reject|unauthor/i.test(String(e.message))) socket.disconnect()",
+          "  })",
+          "  return socket",
+          "}",
+          "",
+          "export function closeSocket() {",
+          "  socket?.removeAllListeners(); socket?.disconnect(); socket = null",
+          "}"
+        ]} }
+    ]
+  },
+  {
+    id:"data", color:"#22c55e",
+    title:"数据存储", en:"Data layer",
+    summary:"ORM 模型映射 MySQL，持久化账号、记录、参数、设备与日志。",
+    children:[
+      { id:"models", title:"ORM 模型 models.py", en:"ORM models", desc:"五张表结构与序列化方法",
+        steps:[
+          { b:"User：账号 / 角色 / 启用状态 / 头像，密码仅存哈希", en:"User table", note:"set_password / check_password" },
+          { b:"SortRecord：品种 / 结果 / 置信度 / 面积 / 图片路径", en:"Sort record table", note:"分拣结果落库" },
+          { b:"SysSetting：参数键值与备注，对外输出 key/value", en:"Setting table", note:"识别参数配置" },
+          { b:"SavedDevice：已保存设备类型 / 目标 / 自动连接 / 最近状态", en:"Saved device table", note:"类型+目标唯一约束" },
+          { b:"OperationLog：敏感操作审计（人 / 时间 / 对象 / IP）", en:"Operation log", note:"谁在何时做了什么" }
+        ], links:["models.py"],
+        code:{ lang:"Python", title:"ORM 模型骨架（以 User 为例）", body:[
+          "from datetime import datetime",
+          "from extensions import bcrypt, db",
+          "",
+          "class User(db.Model):",
+          "    __tablename__ = \"user\"",
+          "    id         = db.Column(db.Integer, primary_key=True, autoincrement=True)",
+          "    username   = db.Column(db.String(50), unique=True, nullable=False, index=True)",
+          "    password_hash = db.Column(db.String(120), nullable=False)",
+          "    role       = db.Column(db.String(20), default=\"operator\")  # admin / operator",
+          "    is_active  = db.Column(db.Boolean, default=True)",
+          "    avatar     = db.Column(db.String(200))",
+          "    create_time= db.Column(db.DateTime, default=datetime.now)",
+          "",
+          "    # 密码只走哈希方法，业务代码不出现明文",
+          "    def set_password(self, raw):",
+          "        self.password_hash = bcrypt.generate_password_hash(raw).decode()",
+          "    def check_password(self, raw):",
+          "        return bcrypt.check_password_hash(self.password_hash, raw)",
+          "    def to_dict(self):",
+          "        return { /* 序列化给前端的字段 */ }",
+          "",
+          "# SortRecord / SysSetting / SavedDevice / OperationLog 同写法，各对应一张表"
+        ]} },
+      { id:"mysql", title:"MySQL 数据库", en:"MySQL 8", desc:"库 openmv_ai，经 SQLAlchemy 访问",
+        steps:[
+          { b:"后端经 extensions.db 执行 ORM 查询与写入", en:"ORM via SQLAlchemy", note:"不写裸 SQL" },
+          { b:"库名 openmv_ai，字符集 utf8mb4", en:"Database", note:"与后端配置一致" },
+          { b:"3306 不对公网开放，仅本机 / 容器内网访问", en:"Not public", note:"数据库安全约束" }
+        ], links:["MySQL 8 · openmv_ai"],
+        code:{ lang:"Python", title:"数据库连接配置 + ORM 会话", body:[
+          "# config.py：从环境变量拼连接串，不把密码写死进代码",
+          "SQLALCHEMY_DATABASE_URI = (",
+          "    f\"mysql+pymysql://{DB_USER}:{quote_plus(DB_PASSWORD)}\"",
+          "    f\"@{DB_HOST}:{DB_PORT}/{DB_NAME}?charset=utf8mb4\"",
+          ")",
+          "",
+          "# 业务代码不写裸 SQL，统一经 extensions.db 的 ORM 会话：",
+          "#   db.session.add(record)",
+          "#   db.session.commit()",
+          "#   SortRecord.query.filter_by(...).all()"
+        ]} },
+      { id:"files", title:"上传与产物文件", en:"Uploaded files", desc:"截图、录像、头像与训练产物的落盘位置",
+        steps:[
+          { b:"backend/uploads/records：分拣证据图", en:"Record images", note:"经 /uploads 静态访问" },
+          { b:"backend/uploads/videos：命中录像文件", en:"Videos", note:"扫描目录，不单独建表" },
+          { b:"models/：训练产物 tflite / 指标 / 曲线", en:"Trained models", note:"板端或推理使用" }
+        ], links:["backend/uploads/","models/"],
+        code:{ lang:"目录", title:"产物落盘目录结构", body:[
+          "backend/uploads/",
+          "├── records/    # 分拣证据图（经 /uploads/records/xxx.jpg 静态访问）",
+          "├── videos/     # 命中录像文件（接口扫目录列表，不单独建表）",
+          "└── avatars/    # 用户头像",
+          "models/         # 训练产物：tflite 模型 / 指标 / 训练曲线"
+        ]} }
+    ]
+  },
+  {
+    id:"device", color:"#a855f7",
+    title:"设备与硬件", en:"Device & hardware",
+    summary:"板端、PC 模拟设备与训练工具链，通过 HTTP 或文件接入主系统。",
+    children:[
+      { id:"openmv", title:"OpenMV 板端脚本", en:"OpenMV scripts", desc:"采集画面并通过 WiFi 上报后端",
+        steps:[
+          { b:"main.py：板端采集、HSV 判定、WiFi 上报画面与结果", en:"Board main script", note:"上报 /api/device/report" },
+          { b:"nn_classify.py：板端加载 TFLite 模型做分类", en:"NN classify", note:"需 H7 Plus / RT1062 大内存板" }
+        ], links:["openmv_script/main.py","openmv_script/nn_classify.py"],
+        code:{ lang:"MicroPython", title:"板端采集上报骨架", body:[
+          "import network, urequests, sensor, image, time",
+          "",
+          "# ① 初始化摄像头，设置分辨率",
+          "sensor.reset()",
+          "sensor.set_pixformat(sensor.RGB565)",
+          "sensor.set_framesize(sensor.QVGA)",
+          "",
+          "# ② 连 WiFi（SSID / 密码）",
+          "wlan = network.WLAN(network.STA_IF); wlan.active(True)",
+          "wlan.connect(SSID, PASSWORD)",
+          "",
+          "while True:",
+          "    img = sensor.snapshot()",
+          "    # ③ HSV 找色块（或加载 TFLite 模型分类）→ 品种 / 结果 / 置信度",
+          "    # ④ 组装表单 + 图片，POST 到后端上报接口",
+          "    urequests.post(",
+          "        \"http://<服务器IP>:5000/api/device/report\",",
+          "        headers={\"X-Device-Token\": DEVICE_TOKEN},  # 设备令牌鉴权",
+          "        data={...}, files={\"image\": img})",
+          "    time.sleep_ms(冷却时间)"
+        ]} },
+      { id:"pc", title:"PC 联调工具", en:"PC tools", desc:"无板子时用电脑模拟设备上报",
+        steps:[
+          { b:"simulate_device.py：模拟设备按节奏批量上报记录与画面", en:"Simulated device", note:"联调看板与推送" },
+          { b:"pc_camera_device.py：USB 摄像头代替 OpenMV 抓帧上报", en:"PC camera device", note:"UVC 摄像头" }
+        ], links:["simulate_device.py","pc_camera_device.py"],
+        code:{ lang:"Python", title:"PC 模拟设备上报骨架", body:[
+          "import requests",
+          "",
+          "# 无板子时用电脑模拟设备：按节奏向后端上报记录与画面",
+          "API = \"http://127.0.0.1:5000/api/device/report\"",
+          "HEADERS = {\"X-Device-Token\": \"openmv-device-2026\"}",
+          "",
+          "def report_one():",
+          "    files = {\"image\": open(\"demo.jpg\", \"rb\")}",
+          "    data  = {\"fruit_type\": \"apple\", \"result\": \"good\",",
+          "             \"confidence\": \"0.95\", \"area\": \"1200\"}",
+          "    r = requests.post(API, headers=HEADERS, data=data, files=files)",
+          "    print(r.json())",
+          "",
+          "# pc_camera_device.py 同理：用 UVC 摄像头抓帧后上报"
+        ]} },
+      { id:"train", title:"训练工具链 train/", en:"Training chain", desc:"采集 → 划分 → 训练 → 量化 → 验证",
+        steps:[
+          { b:"collect_dataset.py：采集数据集，输出 320×240", en:"Collect dataset", note:"每类样本数可配" },
+          { b:"split_dataset.py：7:2:1 划分并生成 manifest", en:"Split dataset", note:"固定随机种子" },
+          { b:"train_cnn.py：训练轻量 CNN（96×96×3）", en:"Train CNN", note:"轮次 / 批次 / 学习率可配" },
+          { b:"convert_tflite.py：转 TFLite 并 INT8 全整数量化", en:"Quantize TFLite", note:"板端可加载格式" },
+          { b:"pc_infer.py：PC 端 Interpreter 验证模型效果", en:"PC inference", note:"图片或摄像头" }
+        ], links:["train/collect_dataset.py","train/split_dataset.py","train/train_cnn.py","train/convert_tflite.py","train/pc_infer.py"],
+        code:{ lang:"Python", title:"训练链路脚本分工", body:[
+          "# collect_dataset.py  采集样本 → 统一存为 320×240",
+          "# split_dataset.py    按固定随机种子 7:2:1 划分，输出 manifest",
+          "# train_cnn.py        构建轻量 CNN(96×96×3)，训练并保存权重",
+          "# convert_tflite.py   转 TFLite，做 INT8 全整数量化，供板端加载",
+          "# pc_infer.py         PC 端用 Interpreter 加载模型验证图片/摄像头结果",
+          "",
+          "# 典型链路：",
+          "# 采集 → 划分 → 训练 → 保存模型 → 量化导出 → 拷贝到 OpenMV 板端"
+        ]} }
+    ]
+  },
+  {
+    id:"deploy", color:"#06b6d4",
+    title:"部署与移动端", en:"Deploy & mobile",
+    summary:"容器编排把前后端上线，移动端复用同一套后端接口。",
+    children:[
+      { id:"compose", title:"Docker 编排", en:"Docker Compose", desc:"前端 Nginx + 后端容器统一编排启动",
+        steps:[
+          { b:"frontend 容器：Nginx 托管 dist，反代 /api、/uploads、/socket.io", en:"Frontend container", note:"4173 → 80" },
+          { b:"backend 容器：gunicorn + eventlet 运行 Flask", en:"Backend container", note:"5000 仅容器内网" },
+          { b:"compose 注入数据库环境变量，挂载 uploads 持久化", en:"Env & volume", note:"改代码后 up -d --build 重建" }
+        ], links:["docker-compose.yml","frontend/Dockerfile","backend/Dockerfile"],
+        code:{ lang:"YAML", title:"Compose 服务骨架", body:[
+          "services:",
+          "  frontend:                 # Nginx 托管打包后的 dist",
+          "    build: ./frontend",
+          "    ports: [\"4173:80\"]     # 宿主机 4173 → 容器 80，公网入口",
+          "    # Nginx 反代 /api、/uploads、/socket.io 到后端容器",
+          "",
+          "  backend:                  # gunicorn + eventlet 运行 Flask",
+          "    build: ./backend",
+          "    expose: [\"5000\"]       # 只在容器内网，不对公网暴露",
+          "    environment:",
+          "      - DB_HOST=host.docker.internal:3306",
+          "    volumes:",
+          "      - ./backend/uploads:/app/uploads   # 截图录像持久化"
+        ]} },
+      { id:"mobile", title:"Flutter 手机端", en:"Mobile app", desc:"打包 APK，访问同一后端接口",
+        steps:[
+          { b:"mobile_app/lib：手机端页面与状态逻辑", en:"App source", note:"Flutter 工程" },
+          { b:"flutter build apk 生成安装包，安装到手机查看", en:"Build APK", note:"复用 Web 后端 API" }
+        ], links:["mobile_app/"],
+        code:{ lang:"Dart", title:"手机端接入骨架（节选）", body:[
+          "// mobile_app/lib：Flutter 页面与状态逻辑，复用 Web 同一套后端 REST 接口",
+          "// 页面 → 调 Dio/Http 封装 → GET/POST 到 https://<服务器IP>:4173/api/...",
+          "// 登录后把 token 存本地，后续请求统一带上 Authorization",
+          "// flutter build apk 生成安装包；后端接口无需为手机端单独开发"
+        ]} }
+    ]
+  }
+];
+
+/* ================= 连线定义：两端如何连接 ================= */
+/* from/to 对应上面的节点 id；code 展示连接实现代码 */
+var EDGES = [
+  { from:"views", to:"api", title:"页面视图 → 接口封装",
+    desc:"页面组件不直接发 HTTP，统一调用 api/ 里按模块封装好的方法，方法内部再走 axios。",
+    code:{ lang:"JavaScript", title:"视图调用 API 方法", body:[
+      "// 前端 views/Dashboard.vue",
+      "import { recordApi } from '../api'",
+      "",
+      "async function loadList() {",
+      "  const res = await recordApi.list(params)   // 等价于 GET /api/record/list",
+      "  // res.data 即后端返回的记录列表",
+      "}"
+    ]} },
+  { from:"api", to:"routes", title:"接口封装 → 后端蓝图路由",
+    desc:"axios 方法的 URL 与后端蓝图注册的路由一一对应，靠前缀和路径匹配；请求头由拦截器统一带 token。",
+    code:{ lang:"混合", title:"前端方法 ↔ 后端路由对应", body:[
+      "// 前端 api/index.js",
+      "recordApi.list = (params) => request.get('/api/record/list', { params })",
+      "",
+      "# 后端 routes/record.py",
+      "@record_bp.get(\"/list\")",
+      "@login_required",
+      "def list_records():",
+      "    # 1) 读 query 参数  2) SortRecord.query 查库  3) 返回 jsonify(code=0, data=...)",
+    ]} },
+  { from:"routes", to:"service", title:"路由层 → 采集服务",
+    desc:"路由不自己抓帧识别，把耗时采集交给后台服务；路由只做参数校验、启停服务与响应。",
+    code:{ lang:"Python", title:"路由调用服务层", body:[
+      "# routes/device.py",
+      "from services.camera_service import camera_service",
+      "",
+      "@device_bp.post(\"/camera/start\")",
+      "@login_required",
+      "def start_camera():",
+      "    camera_service.start()          # 启动后台抓帧线程",
+      "    return jsonify(code=0, msg=\"已启动\")"
+    ]} },
+  { from:"routes", to:"models", title:"路由层 → ORM 模型",
+    desc:"业务数据经模型类落库；路由不写裸 SQL，通过 db 会话完成增删改查。",
+    code:{ lang:"Python", title:"路由经模型入库 / 查询", body:[
+      "# routes/device.py 上报入库",
+      "record = SortRecord(fruit_type=..., result=..., confidence=..., img_path=...)",
+      "db.session.add(record)",
+      "db.session.commit()",
+      "",
+      "# 查询：SortRecord.query.filter_by(result=\"good\").order_by(...).all()"
+    ]} },
+  { from:"models", to:"mysql", title:"ORM 模型 → MySQL 数据库",
+    desc:"模型类字段映射到数据表；SQLAlchemy 把 ORM 操作翻译成 SQL 在 MySQL 上执行。",
+    code:{ lang:"Python", title:"模型映射数据表", body:[
+      "# models.py：User 类 ↔ user 表，列 ↔ 数据库字段",
+      "class User(db.Model):",
+      "    __tablename__ = \"user\"",
+      "    username = db.Column(db.String(50), unique=True, nullable=False)",
+      "",
+      "# extensions.py：db = SQLAlchemy()，app 初始化后绑定连接串",
+      "# 运行时：User.query.get(1) → SELECT * FROM user WHERE id=1"
+    ]} },
+  { from:"socket", to:"routes", title:"后端实时推送 ↔ 前端 Socket 接收",
+    desc:"新记录入库后后端 emit；前端全局单例 socket 监听并刷新看板，无需手动刷新页面。",
+    code:{ lang:"混合", title:"emit 推送 ↔ on 监听", body:[
+      "# 后端 routes/device.py",
+      "socketio.emit(\"new_record\", payload)",
+      "",
+      "// 前端 views/Dashboard.vue",
+      "import { getSocket } from '../utils/socket'",
+      "const socket = getSocket()",
+      "socket.on(\"new_record\", (record) => {",
+      "  // 收到新记录 → 追加列表 / 更新统计卡片 / 刷新趋势图",
+      "})"
+    ]} },
+  { from:"openmv", to:"routes", title:"板端设备 → 后端上报接口",
+    desc:"OpenMV（或 PC 模拟设备）带设备令牌 POST 到 /api/device/report，后端校验令牌后入库并推送。",
+    code:{ lang:"Python", title:"设备令牌鉴权 + 上报", body:[
+      "# 后端装饰器 device_required：校验请求头 X-Device-Token 是否等于配置 DEVICE_TOKEN",
+      "@device_bp.post(\"/report\")",
+      "@device_required",
+      "def report():",
+      "    # 校验 fruit_type/result/confidence/area → 存图 → 写 SortRecord → emit new_record",
+      "",
+      "# 板端请求头：headers={\"X-Device-Token\": \"openmv-device-2026\"}"
+    ]} },
+  { from:"compose", to:"backend", title:"Docker 编排 → 前后端容器",
+    desc:"Compose 一次性拉起前端 Nginx 与后端容器，网络互通；前端经 Nginx 反代访问后端，后端再连 MySQL。",
+    code:{ lang:"网络", title:"容器间调用链路", body:[
+      "# 浏览器 → 前端容器 :4173 (Nginx 托管 dist)",
+      "#         └─ 反代 /api、/uploads、/socket.io → 后端容器 :5000 (内网)",
+      "# 后端容器 → host.docker.internal:3306 → MySQL"
+    ]} },
+  { from:"train", to:"openmv", title:"训练链 → 板端模型",
+    desc:"训练量化出的 TFLite 模型拷贝到 OpenMV 板端，板端 nn_classify 加载做分类。",
+    code:{ lang:"混合", title:"模型产物下发板端", body:[
+      "# train/convert_tflite.py 产出：model.tflite（INT8 量化）",
+      "#   ↓ 拷贝到板端文件系统",
+      "# openmv_script/nn_classify.py：",
+      "#   net = image.load_tflite(\"model.tflite\")",
+      "#   out = net.predict(img)   # 返回分类结果与置信度"
+    ]} },
+  { from:"api", to:"router", title:"接口封装 → 登录状态存储 / 路由守卫",
+    desc:"Pinia store 调用 authApi 完成登录，把 token 与用户信息写入 localStorage；路由守卫读取该状态决定放行或跳转。",
+    code:{ lang:"JavaScript", title:"store 登录写入 + 守卫读取", body:[
+      "// store/user.js：调接口并持久化登录态",
+      "import { authApi } from '../api'",
+      "async login(form) {",
+      "  const res = await authApi.login(form)   // POST /api/auth/login",
+      "  this.token = res.data.token",
+      "  localStorage.setItem('token', this.token)",
+      "  localStorage.setItem('userInfo', JSON.stringify(res.data.user))",
+      "}",
+      "",
+      "// router/index.js：守卫读 store 状态",
+      "const store = useUserStore()",
+      "if (!store.isLogin) return { path: '/login' }",
+      "if (to.meta.admin && !store.isAdmin) return { path: '/dashboard' }"
+    ]} }
+];
+
+/* 建立 id → 节点索引，便于连线匹配 */
+var NODE_BY_ID = {};
+DATA.forEach(function(br){
+  NODE_BY_ID[br.id] = br;
+  br.children.forEach(function(lf){ NODE_BY_ID[lf.id] = lf; });
+});
+
+/* ================= 组装 ECharts 树图数据 ================= */
+function buildTree(){
+  return {
+    id:"root", name:"果实分拣系统\nFruit Sorting",
+    itemStyle:{color:"#3b82f6"},
+    children:DATA.map(function(br){
+      return {
+        id:br.id, name:br.title, itemStyle:{color:br.color}, _branch:br,
+        children:br.children.map(function(lf){
+          return { id:lf.id, name:lf.title, itemStyle:{color:br.color}, _leaf:lf, _branch:br };
+        })
+      };
+    })
+  };
+}
+
+var chart = echarts.init(document.getElementById("fishbone"));
+var option = {
+  tooltip:{ trigger:"item", triggerOn:"mousemove",
+    formatter:function(p){
+      if(p.dataType === "edge"){ return "连线：点击查看两端连接代码"; }
+      return p.data.name;
+    } },
+  series:[{
+    type:"tree",
+    data:[buildTree()],
+    top:"4%", left:"9%", right:"19%", bottom:"4%",
+    layout:"orthogonal",
+    orient:"LR",
+    symbol:"roundRect",
+    symbolSize:[10,10],
+    roam:true,
+    expandAndCollapse:true,
+    initialTreeDepth:2,
+    label:{ position:"top", verticalAlign:"middle", fontSize:13, color:"#e6edf7",
+      backgroundColor:"#16233f", borderColor:"#2a3b5f", borderWidth:1, borderRadius:8, padding:[6,10] },
+    leaves:{ label:{ position:"right", verticalAlign:"middle", fontSize:12 } },
+    lineStyle:{ color:"#3b557f", width:1.5, curveness:0.4 },
+    emphasis:{ focus:"descendant" },
+    animationDuration:400
+  }]
+};
+chart.setOption(option);
+
+/* ================= 详情渲染 ================= */
+var $ = function(id){ return document.getElementById(id); };
+
+function clearDetail(){
+  $("stepsLabel").style.display = "none";
+  $("stepsList").innerHTML = "";
+  $("filesLabel").style.display = "none";
+  $("filesTags").innerHTML = "";
+  $("codeLabel").style.display = "none";
+  $("codeWrap").style.display = "none";
+  $("edgePath").style.display = "none";
+  $("edgePath").innerHTML = "";
+}
+
+function renderCode(code){
+  if(!code){ return; }
+  $("codeLabel").style.display = "";
+  $("codeWrap").style.display = "";
+  $("codeLang").textContent = code.lang || "代码";
+  $("codeTitle").textContent = code.title || "";
+  var html = code.body.map(function(line){
+    // 注释行（# 或 // 开头，去空格后）做灰色高亮
+    var t = esc(line);
+    var trimmed = line.trim();
+    if(/^(#|\/\/)/.test(trimmed)){ t = '<span class="cm">' + t + "</span>"; }
+    return t;
+  }).join("\n");
+  $("codeBody").innerHTML = html;
+}
+
+function showBranch(br){
+  clearDetail();
+  setEdgeActive("");
+  $("crumb").textContent = "分支 / " + br.title;
+  $("detailTitle").textContent = br.title;
+  $("detailEn").textContent = br.en;
+  $("detailDesc").textContent = br.summary;
+}
+
+function showLeaf(lf, br){
+  clearDetail();
+  setEdgeActive("");
+  $("crumb").textContent = "分支 / " + br.title + " · 模块 / " + lf.title;
+  $("detailTitle").textContent = lf.title;
+  $("detailEn").textContent = lf.en;
+  $("detailDesc").textContent = lf.desc;
+
+  var list = $("stepsList");
+  list.innerHTML = "";
+  lf.steps.forEach(function(s){
+    var li = document.createElement("li");
+    var note = s.note ? '<div class="d-note">备注：' + esc(s.note) + "</div>" : "";
+    li.innerHTML = "<b>" + esc(s.b) + '</b><div class="d-en">' + esc(s.en) + "</div>" + note;
+    list.appendChild(li);
+  });
+  $("stepsLabel").style.display = "";
+
+  var tags = $("filesTags");
+  tags.innerHTML = "";
+  lf.links.forEach(function(l){
+    var code = document.createElement("code");
+    code.textContent = l;
+    tags.appendChild(code);
+  });
+  $("filesLabel").style.display = "";
+
+  renderCode(lf.code);
+}
+
+function edgeName(id){
+  var n = NODE_BY_ID[id];
+  return n ? n.title : id;
+}
+
+function edgeKey(e){ return e.from + "->" + e.to; }
+
+function setEdgeActive(key){
+  var chips = document.querySelectorAll(".edge-chip");
+  chips.forEach(function(c){ c.classList.toggle("active", c.dataset.key === key); });
+}
+
+/* tree 连线本身不派发点击事件，用下方 DOM 清单兜底，逐条绑定点击 */
+function renderEdgeList(){
+  var box = $("edgesList");
+  box.innerHTML = "";
+  EDGES.forEach(function(e){
+    var b = document.createElement("button");
+    b.type = "button";
+    b.className = "edge-chip";
+    b.dataset.key = edgeKey(e);
+    var path = document.createElement("span");
+    path.className = "ec-path";
+    path.textContent = edgeName(e.from) + " ──▶ " + edgeName(e.to);
+    var title = document.createElement("span");
+    title.textContent = e.title;
+    b.appendChild(path);
+    b.appendChild(title);
+    b.addEventListener("click", function(){ showEdge(e); });
+    box.appendChild(b);
+  });
+}
+
+function showEdge(edge){
+  clearDetail();
+  $("crumb").textContent = "连线 / " + edge.title;
+  $("detailTitle").textContent = edge.title;
+  $("detailEn").textContent = "Connection between " + edgeName(edge.from) + " and " + edgeName(edge.to);
+  $("detailDesc").textContent = edge.desc;
+
+  var path = $("edgePath");
+  path.style.display = "flex";
+  path.innerHTML =
+    '<span class="node-chip">' + esc(edgeName(edge.from)) + "</span>" +
+    '<span class="arrow">──▶</span>' +
+    '<span class="node-chip">' + esc(edgeName(edge.to)) + "</span>";
+
+  renderCode(edge.code);
+  setEdgeActive(edgeKey(edge));
+}
+
+function findEdge(sourceId, targetId){
+  return EDGES.find(function(e){
+    return (e.from === sourceId && e.to === targetId) ||
+           (e.from === targetId && e.to === sourceId);
+  });
+}
+
+/* ================= 点击事件：节点 + 连线 ================= */
+chart.on("click", function(params){
+  // 连线（边）点击
+  if(params.dataType === "edge"){
+    var src = params.data.source, tgt = params.data.target;
+    var edge = findEdge(src, tgt);
+    if(edge){ showEdge(edge); }
+    else{
+      clearDetail();
+      $("crumb").textContent = "连线 / 普通层级";
+      $("detailTitle").textContent = "这是一条层级归属连线";
+      $("detailEn").textContent = "Plain hierarchy link";
+      $("detailDesc").textContent = "该连线只表示上下层归属，没有单独的连接代码；可点击相连的节点查看其模块骨架代码。";
+    }
+    return;
+  }
+
+  var d = params.data;
+  if(d._leaf){ showLeaf(d._leaf, d._branch); }
+  else if(d._branch){ showBranch(d._branch); }
+  else{
+    showBranch({ title:d.name, en:"", summary:"该分支包含以下二级模块，点击具体节点查看骨架代码。" });
+  }
+});
+
+renderEdgeList();
+window.addEventListener("resize", function(){ chart.resize(); });
+</script>
+</body>
+</html>

@@ -1,0 +1,767 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>果实分拣系统 · 从零搭建指南 | Setup Guide</title>
+<style>
+/* ============ 基础变量与重置 ============ */
+:root{
+  --bg:#0f172a;
+  --bg-soft:#1e293b;
+  --card:#ffffff;
+  --ink:#0f172a;
+  --ink-soft:#475569;
+  --line:#e2e8f0;
+  --brand:#2563eb;
+  --brand-2:#1d4ed8;
+  --brand-soft:#dbeafe;
+  --accent:#0ea5e9;
+  --green:#16a34a;
+  --green-soft:#dcfce7;
+  --amber:#d97706;
+  --amber-soft:#fef3c7;
+  --purple:#7c3aed;
+  --purple-soft:#ede9fe;
+  --shadow:0 10px 30px rgba(15,23,42,.12);
+  --radius:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  font-family:"Noto Sans SC","Microsoft YaHei","PingFang SC",system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+  background:linear-gradient(160deg,#0f172a 0%,#1e3a5f 55%,#0f172a 100%);
+  color:var(--ink);line-height:1.7;min-height:100vh;
+}
+.wrap{max-width:1080px;margin:0 auto;padding:0 20px 80px}
+
+/* ============ 顶部 Hero ============ */
+header.hero{text-align:center;padding:60px 20px 36px;color:#fff}
+.hero .badge{
+  display:inline-flex;align-items:center;gap:8px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);
+  padding:6px 16px;border-radius:999px;font-size:13px;letter-spacing:.5px;
+  margin-bottom:22px;backdrop-filter:blur(6px);
+}
+.hero h1{font-size:clamp(26px,4vw,40px);font-weight:800;letter-spacing:1px}
+.hero h1 .en{display:block;font-size:.55em;font-weight:500;color:#bcd6ff;margin-top:8px}
+.hero p.sub{max-width:700px;margin:18px auto 0;color:#cbd5e1;font-size:15px}
+.hero .sub .en{display:block;color:#94a3b8;font-size:13px;margin-top:4px}
+
+/* ============ 工具条 ============ */
+.toolbar{
+  position:sticky;top:0;z-index:30;
+  display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;
+  padding:14px 20px;margin:0 auto 28px;max-width:1080px;
+  background:rgba(15,23,42,.85);backdrop-filter:blur(10px);
+  border-bottom:1px solid rgba(255,255,255,.1);
+}
+.lang-toggle{display:flex;background:rgba(255,255,255,.1);border-radius:10px;padding:3px}
+.lang-toggle button{
+  border:0;background:transparent;color:#cbd5e1;padding:7px 16px;border-radius:8px;
+  font-size:14px;cursor:pointer;transition:.2s;
+}
+.lang-toggle button.active{background:var(--brand);color:#fff}
+.toolbar .tip{color:#94a3b8;font-size:13px}
+
+/* ============ 顶层阶段导航（逻辑流程） ============ */
+.flow{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:20px 0 36px;
+}
+.flow-node{
+  background:var(--card);border-radius:var(--radius);padding:18px 14px;
+  box-shadow:var(--shadow);text-align:center;border-top:4px solid var(--brand);
+  transition:.25s;cursor:pointer;border:0;
+}
+.flow-node:hover{transform:translateY(-4px)}
+.flow-node .num{
+  width:38px;height:38px;margin:0 auto 10px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;
+  background:var(--brand);font-size:17px;
+}
+.flow-node:nth-child(2) .num{background:var(--purple)}
+.flow-node:nth-child(3) .num{background:var(--accent)}
+.flow-node:nth-child(4) .num{background:var(--green)}
+.flow-node h3{font-size:16px}
+.flow-node h3 .en{display:block;font-size:12px;color:var(--ink-soft);font-weight:500;margin-top:2px}
+.flow-node p{font-size:12.5px;color:var(--ink-soft);margin-top:6px}
+
+/* ============ 阶段（一级） ============ */
+section.phase{margin-bottom:24px}
+.phase-head{
+  width:100%;display:flex;align-items:center;gap:16px;
+  background:var(--card);border-radius:var(--radius);padding:20px 22px;
+  box-shadow:var(--shadow);border:0;cursor:pointer;text-align:left;color:var(--ink);
+  transition:.2s;
+}
+.phase-head:hover{transform:translateY(-2px)}
+.phase-head .ico{
+  flex:0 0 48px;width:48px;height:48px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;font-size:24px;color:#fff;background:var(--brand);
+}
+.phase-head .titles{flex:1}
+.phase-head .titles h2{font-size:19px;font-weight:700}
+.phase-head .titles h2 .en{display:block;font-size:13px;color:var(--ink-soft);font-weight:500}
+.phase-head .titles .goal{font-size:13px;color:var(--ink-soft);margin-top:3px}
+.phase-head .chev{color:var(--ink-soft);transition:transform .25s;font-size:20px}
+section.phase.open .chev{transform:rotate(90deg)}
+
+.phase-body{overflow:hidden;max-height:0;transition:max-height .35s ease}
+.phase-inner{background:rgba(255,255,255,.96);border-radius:var(--radius);margin-top:12px;padding:20px;box-shadow:var(--shadow)}
+
+/* 阶段内步骤链：竖线连接，体现从属层级 */
+.step-tree{position:relative;padding-left:8px}
+.step-tree::before{
+  content:"";position:absolute;left:26px;top:18px;bottom:18px;width:2px;background:var(--line);
+}
+
+/* ============ 步骤条目（二级） ============ */
+.step{
+  position:relative;display:flex;gap:16px;padding:16px 0;border-bottom:1px dashed var(--line);
+}
+.step:last-child{border-bottom:0}
+.step .step-no{
+  position:relative;z-index:1;flex:0 0 30px;height:30px;border-radius:10px;
+  background:var(--brand-soft);color:var(--brand-2);font-weight:700;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.step .step-card{flex:1;background:#f8fafc;border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+.step .step-card h4{font-size:15.5px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.step .step-card h4 .en{color:var(--ink-soft);font-weight:500;font-size:13px}
+
+/* 标签 */
+.tag-opt{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--amber-soft);color:var(--amber);font-size:11.5px;font-weight:600}
+.tag-opt .en{font-weight:500}
+.tag-core{display:inline-block;padding:2px 10px;border-radius:999px;background:var(--green-soft);color:var(--green);font-size:11.5px;font-weight:600}
+
+/* 步骤说明：具体干什么 */
+.do{margin-top:8px}
+.do .zh{color:var(--ink-soft);font-size:14px}
+.do .en-txt{color:#64748b;font-size:13px;margin-top:3px;font-style:italic}
+
+/* 动作清单：步骤下的细分操作 */
+.do-list{margin:10px 0 4px;padding-left:0;list-style:none}
+.do-list li{
+  position:relative;padding:5px 0 5px 22px;font-size:13.5px;color:var(--ink-soft);
+}
+.do-list li::before{
+  content:"▸";position:absolute;left:2px;color:var(--brand);font-weight:700;
+}
+.do-list li .en{color:#64748b;font-size:12.5px}
+
+/* 命令块 */
+pre.cmd{
+  background:#0b1220;color:#e2e8f0;border-radius:12px;padding:14px 16px;
+  font-family:"JetBrains Mono","Consolas",monospace;font-size:13px;margin:10px 0;
+  overflow-x:auto;line-height:1.6;
+}
+pre.cmd .cm{color:#64748b}
+.code-note{font-size:12.5px;color:var(--ink-soft);margin-top:4px}
+
+/* 产出结果小条 */
+.result{
+  display:flex;gap:8px;align-items:flex-start;background:var(--green-soft);border-radius:10px;
+  padding:9px 12px;margin-top:10px;font-size:13px;color:#14532d;
+}
+.result .en{color:#166534;font-size:12px}
+
+/* 提示框 */
+.note{display:flex;gap:10px;background:var(--brand-soft);border-left:3px solid var(--brand);border-radius:10px;padding:12px 14px;margin:14px 0;font-size:13.5px;color:#1e3a8a}
+.note.warn{background:var(--amber-soft);border-color:var(--amber);color:#92400e}
+.note .en{display:block;font-size:12px;opacity:.8;margin-top:2px}
+
+/* 表格 */
+table.stack{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}
+table.stack th,table.stack td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left}
+table.stack th{color:var(--ink-soft);font-weight:600;background:#f8fafc}
+table.stack td .en{color:#64748b;font-size:12px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.mini-card{background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:16px}
+.mini-card h5{font-size:14px;margin-bottom:6px}
+.mini-card ul{padding-left:18px;font-size:13px;color:var(--ink-soft)}
+
+footer{text-align:center;color:#94a3b8;font-size:13px;margin-top:50px}
+footer .en{display:block;font-size:12px;margin-top:4px}
+
+/* 语言显示控制 */
+body.lang-zh .only-en{display:none}
+body.lang-en .only-zh{display:none}
+body.lang-mix .only-en,body.lang-mix .only-zh{display:inline}
+
+@media(max-width:820px){
+  .flow{grid-template-columns:1fr 1fr}
+  .grid2{grid-template-columns:1fr}
+  .toolbar{position:static}
+  .step-tree::before{left:20px}
+}
+</style>
+</head>
+<body class="lang-mix">
+
+<!-- ================= 顶部 ================= -->
+<header class="hero">
+  <div class="badge">🍃 OpenMV 果实智能分拣系统 · Fruit Sorting System</div>
+  <h1>从零搭建与服务器部署指南<span class="en">Step-by-Step Setup &amp; Server Deployment Guide</span></h1>
+  <p class="sub">面向零基础同学：按「环境准备 → 软件安装 → 本地试运行 → 部署上线」的逻辑顺序，每一步写清具体做什么。
+    <span class="en">For beginners: follow the logical order Environment → Software → Local run → Deployment; each step explains exactly what to do.</span>
+  </p>
+</header>
+
+<!-- ================= 工具条 ================= -->
+<div class="toolbar">
+  <div class="lang-toggle" id="langToggle">
+    <button data-lang="mix" class="active">中英对照</button>
+    <button data-lang="zh">仅中文</button>
+    <button data-lang="en">仅 English</button>
+  </div>
+  <div class="tip only-zh">点击阶段展开步骤 · 每步下方为具体操作 · 标注「可选」可不做</div>
+  <div class="tip only-en">Click a phase to expand · Details under each step · "Optional" items can be skipped</div>
+</div>
+
+<div class="wrap">
+
+  <!-- ============ 顶层逻辑流程 ============ -->
+  <div class="flow">
+    <button class="flow-node" data-goto="p1">
+      <div class="num">1</div>
+      <h3>环境准备<span class="en">Environment</span></h3>
+      <p class="only-zh">确定运行机器与服务器</p>
+      <p class="only-en">Prepare PC and server</p>
+    </button>
+    <button class="flow-node" data-goto="p2">
+      <div class="num">2</div>
+      <h3>软件安装<span class="en">Software</span></h3>
+      <p class="only-zh">装语言环境、数据库、依赖</p>
+      <p class="only-en">Runtime, DB, dependencies</p>
+    </button>
+    <button class="flow-node" data-goto="p3">
+      <div class="num">3</div>
+      <h3>本地试运行<span class="en">Local Run</span></h3>
+      <p class="only-zh">本机先跑通前后端</p>
+      <p class="only-en">Run locally first</p>
+    </button>
+    <button class="flow-node" data-goto="p4">
+      <div class="num">4</div>
+      <h3>部署上线<span class="en">Deployment</span></h3>
+      <p class="only-zh">上传、启动、放行端口、验证</p>
+      <p class="only-en">Upload, start, open port, verify</p>
+    </button>
+  </div>
+
+  <!-- ============ 阶段一：环境准备 ============ -->
+  <section class="phase open" id="p1" data-phase>
+    <button class="phase-head" data-head>
+      <div class="ico">🖥️</div>
+      <div class="titles">
+        <h2>第一步 · 环境准备<span class="en">Phase 1 · Prepare the Environment</span></h2>
+        <p class="goal only-zh">目标：确定在哪里跑——一台本地开发机 + 一台可公网访问的云服务器</p>
+        <p class="goal only-en">Goal: decide where to run — a local dev PC plus a public cloud server</p>
+      </div>
+      <div class="chev">➤</div>
+    </button>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <div class="step-tree">
+
+          <div class="step">
+            <div class="step-no">1.1</div>
+            <div class="step-card">
+              <h4>准备本地电脑 <span class="en">Local computer</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：选一台能编写代码、本地调试的电脑，Windows / macOS / Linux 均可，本指南以 Windows 为例。</p>
+                <p class="en-txt">Do: pick a PC for coding and debugging; Windows / macOS / Linux all work; this guide uses Windows.</p>
+              </div>
+              <ul class="do-list">
+                <li><span class="zh">确认系统能正常联网、可安装软件</span><span class="en"> — ensure network and install permission</span></li>
+                <li><span class="zh">预留足够磁盘空间存放代码与依赖</span><span class="en"> — reserve disk space for code and dependencies</span></li>
+              </ul>
+              <div class="result">✅ <span class="zh">产出：一台可用的本地开发机</span><span class="en"> · Result: a working local dev machine</span></div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">1.2</div>
+            <div class="step-card">
+              <h4>准备云服务器 <span class="en">Cloud server</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：购买一台轻量应用服务器（腾讯云 / 阿里云等），操作系统选 Ubuntu 22.04，配置 2 核 4G 以上；购买后记下公网 IP、登录账号和密码。</p>
+                <p class="en-txt">Do: buy a lightweight server (Tencent Cloud / Aliyun), choose Ubuntu 22.04, ≥2 vCPU / 4GB RAM; record the public IP, login user and password.</p>
+              </div>
+              <ul class="do-list">
+                <li><span class="zh">在控制台查看实例的公网 IP 地址</span><span class="en"> — copy the public IP from the console</span></li>
+                <li><span class="zh">设置好服务器登录密码并妥善保存</span><span class="en"> — set and save the login password</span></li>
+              </ul>
+              <div class="result">✅ <span class="zh">产出：一台可远程登录的公网服务器</span><span class="en"> · Result: a reachable public server</span></div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">1.3</div>
+            <div class="step-card">
+              <h4>确认远程连接通道 <span class="en">Remote access channel</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：确认本地能通过 SSH（22 端口）连上服务器，后续用命令行或网页终端在服务器上操作。</p>
+                <p class="en-txt">Do: confirm your PC can reach the server over SSH port 22; you will operate the server via command line or web terminal.</p>
+              </div>
+              <ul class="do-list">
+                <li><span class="zh">在云控制台防火墙放行 SSH（22）端口</span><span class="en"> — allow SSH port 22 in the firewall</span></li>
+                <li><span class="zh">用终端工具测试账号密码能否登录</span><span class="en"> — test login with user and password</span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">1.4</div>
+            <div class="step-card">
+              <h4>准备 OpenMV 板与摄像头 <span class="en">OpenMV board &amp; camera</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：没有板子时，可用电脑摄像头或模拟设备完成演示；要接真实硬件时再准备 OpenMV H7 / RT1062 开发板及配套摄像头。</p>
+                <p class="en-txt">Do: demo with a PC camera or simulated device without a board; only prepare an OpenMV H7 / RT1062 board and camera when using real hardware.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="note">
+          <div>🏗️ <span class="only-zh">架构总览：前端 Vue 负责页面，后端 Flask 负责接口，MySQL 存数据，OpenMV / 摄像头采集画面。</span>
+            <span class="only-en">Overview: Vue frontend renders pages, Flask backend serves APIs, MySQL stores data, OpenMV / camera captures images.</span>
+          </div>
+        </div>
+
+        <table class="stack">
+          <thead><tr><th>组件 Component</th><th>技术栈 Tech</th><th>作用 Role</th></tr></thead>
+          <tbody>
+            <tr><td>前端 Frontend</td><td>Vue 3 + Vite + Element Plus + ECharts</td><td><span class="zh">页面与看板展示</span><span class="en">Pages &amp; dashboard</span></td></tr>
+            <tr><td>后端 Backend</td><td>Flask + Flask-SocketIO + OpenCV</td><td><span class="zh">接口、识别、实时推送</span><span class="en">APIs, detection, realtime push</span></td></tr>
+            <tr><td>数据库 Database</td><td>MySQL 8</td><td><span class="zh">用户、记录、设置等数据</span><span class="en">Users, records, settings</span></td></tr>
+            <tr><td>设备 Device</td><td>OpenMV 脚本 / PC 摄像头</td><td><span class="zh">采集并上报画面</span><span class="en">Capture and report images</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 阶段二：软件安装 ============ -->
+  <section class="phase" id="p2" data-phase>
+    <button class="phase-head" data-head>
+      <div class="ico">📦</div>
+      <div class="titles">
+        <h2>第二步 · 软件安装<span class="en">Phase 2 · Install Software</span></h2>
+        <p class="goal only-zh">目标：装好后端语言环境、前端打包环境、数据库，以及项目所需依赖包</p>
+        <p class="goal only-en">Goal: install backend runtime, frontend toolchain, database and project dependencies</p>
+      </div>
+      <div class="chev">➤</div>
+    </button>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <div class="step-tree">
+
+          <div class="step">
+            <div class="step-no">2.1</div>
+            <div class="step-card">
+              <h4>安装 Python（后端运行环境）<span class="en">Python for backend</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：安装 Python 3.12，安装时勾选「Add Python to PATH」；后端用 Python 提供接口服务。</p>
+                <p class="en-txt">Do: install Python 3.12, tick "Add Python to PATH"; the backend runs in Python to serve APIs.</p>
+              </div>
+              <ul class="do-list">
+                <li><span class="zh">从官网下载 Python 3.12 安装包并安装</span><span class="en"> — download and install Python 3.12</span></li>
+                <li><span class="zh">命令行输入 <code>python --version</code> 确认版本</span><span class="en"> — verify with <code>python --version</code></span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">2.2</div>
+            <div class="step-card">
+              <h4>安装 Node.js（前端打包环境）<span class="en">Node.js for frontend</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：安装 Node.js 20 LTS，用于安装前端依赖并把 Vue 页面打包成静态文件。</p>
+                <p class="en-txt">Do: install Node.js 20 LTS to install frontend dependencies and build Vue pages into static files.</p>
+              </div>
+              <ul class="do-list">
+                <li><span class="zh">下载安装 Node.js 20 长期支持版</span><span class="en"> — install Node.js 20 LTS</span></li>
+                <li><span class="zh">命令行输入 <code>node -v</code> 确认安装成功</span><span class="en"> — verify with <code>node -v</code></span></li>
+              </ul>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">2.3</div>
+            <div class="step-card">
+              <h4>安装 MySQL 数据库 <span class="en">MySQL database</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：安装 MySQL 8 并设置 root 密码；部署时在库中创建业务库（本项目库名 <code>openmv_ai</code>）和业务账号。数据库只在本机 / 内网使用，不对公网开放。</p>
+                <p class="en-txt">Do: install MySQL 8, set the root password; create the business database (<code>openmv_ai</code>) and a business user. Keep the DB local / internal, not public.</p>
+              </div>
+              <ul class="do-list">
+                <li><span class="zh">安装 MySQL 8 服务并设好 root 密码</span><span class="en"> — install MySQL 8 and set root password</span></li>
+                <li><span class="zh">创建业务库 <code>openmv_ai</code>，字符集 utf8mb4</span><span class="en"> — create database <code>openmv_ai</code>, utf8mb4</span></li>
+              </ul>
+              <pre class="cmd"><span class="cm"># 创建业务库（示例）/ Create database (example)</span>
+CREATE DATABASE openmv_ai DEFAULT CHARACTER SET utf8mb4;</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">2.4</div>
+            <div class="step-card">
+              <h4>安装后端依赖包 <span class="en">Backend dependencies</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：进入后端目录，新建虚拟环境，按 <code>requirements.txt</code> 安装 Flask、SocketIO、OpenCV 等依赖。</p>
+                <p class="en-txt">Do: enter the backend folder, create a virtual environment and install Flask, SocketIO, OpenCV etc. from <code>requirements.txt</code>.</p>
+              </div>
+              <pre class="cmd"><span class="cm"># Windows 示例 / Windows example</span>
+cd backend
+python -m venv venv
+venv\Scripts\pip install -r requirements.txt</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">2.5</div>
+            <div class="step-card">
+              <h4>安装前端依赖包 <span class="en">Frontend dependencies</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：进入前端目录，用 npm 安装 Vue、Element Plus、ECharts 等依赖。</p>
+                <p class="en-txt">Do: enter the frontend folder and install Vue, Element Plus, ECharts etc. with npm.</p>
+              </div>
+              <pre class="cmd">cd frontend
+npm install</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">2.6</div>
+            <div class="step-card">
+              <h4>安装 Docker（服务器打包运行用）<span class="en">Docker for server</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：用容器方式部署时，在服务器上安装 Docker 和 Compose 插件；本地手动调试可以不装。</p>
+                <p class="en-txt">Do: install Docker and the Compose plugin on the server for container deployment; not needed for local manual debugging.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">2.7</div>
+            <div class="step-card">
+              <h4>安装 TensorFlow 训练环境 <span class="en">TensorFlow training env</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：只有需要本地训练 / 转换神经网络 TFLite 模型时才安装；纯演示、分拣、记录查看不需要。</p>
+                <p class="en-txt">Do: install only when training or converting a TFLite model locally; not required for demo, sorting or record viewing.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="note warn">
+          <div>⚠️ <span class="only-zh">提示：Python、Node、MySQL 版本不要随意更换，版本不匹配是安装报错的主要原因。</span>
+            <span class="only-en">Tip: keep the Python / Node / MySQL versions close to the guide; version mismatch is the main cause of install errors.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 阶段三：本地试运行 ============ -->
+  <section class="phase" id="p3" data-phase>
+    <button class="phase-head" data-head>
+      <div class="ico">🧪</div>
+      <div class="titles">
+        <h2>第三步 · 本地试运行<span class="en">Phase 3 · Run Locally First</span></h2>
+        <p class="goal only-zh">目标：先在本机把前后端跑起来，确认功能正常，再上传服务器</p>
+        <p class="goal only-en">Goal: run frontend and backend locally, verify, then upload to the server</p>
+      </div>
+      <div class="chev">➤</div>
+    </button>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <div class="step-tree">
+
+          <div class="step">
+            <div class="step-no">3.1</div>
+            <div class="step-card">
+              <h4>配置环境变量 <span class="en">Configure env variables</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：在后端目录把 <code>.env.example</code> 复制为 <code>.env</code>，填写数据库账号、密码、库名、密钥和设备令牌。</p>
+                <p class="en-txt">Do: copy <code>.env.example</code> to <code>.env</code> in the backend folder; fill in DB user, password, database name, secret key and device token.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">3.2</div>
+            <div class="step-card">
+              <h4>启动后端 <span class="en">Start the backend</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：运行后端服务，默认监听 5000 端口；访问健康检查 <code>/api/health</code> 返回 ok 即正常。</p>
+                <p class="en-txt">Do: start the backend on port 5000; the health check <code>/api/health</code> returning ok means it works.</p>
+              </div>
+              <pre class="cmd">venv\Scripts\python app.py</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">3.3</div>
+            <div class="step-card">
+              <h4>启动前端 <span class="en">Start the frontend</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：另开一个终端启动前端开发服务器，浏览器打开提示的本地地址即可看到登录页。</p>
+                <p class="en-txt">Do: open another terminal, start the frontend dev server; open the local address shown to see the login page.</p>
+              </div>
+              <pre class="cmd">npm run dev</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">3.4</div>
+            <div class="step-card">
+              <h4>登录并核对功能 <span class="en">Login &amp; check features</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：用管理员账号登录，进入看板、设备、记录、设置页面，确认画面、记录、统计正常显示。</p>
+                <p class="en-txt">Do: login as admin, open dashboard, device, records and settings; confirm images, records and statistics display correctly.</p>
+              </div>
+              <ul class="do-list">
+                <li><span class="zh">核对实时画面、统计卡片、趋势图</span><span class="en"> — check live image, stats cards, charts</span></li>
+                <li><span class="zh">核对分拣记录列表与图片查看</span><span class="en"> — check record list and image viewing</span></li>
+              </ul>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 阶段四：部署上线 ============ -->
+  <section class="phase" id="p4" data-phase>
+    <button class="phase-head" data-head>
+      <div class="ico">🚀</div>
+      <div class="titles">
+        <h2>第四步 · 部署到服务器 <span class="en">Phase 4 · Deploy to the Server</span></h2>
+        <p class="goal only-zh">目标：把项目上传到云服务器，启动服务、放行公网端口并完成访问验证</p>
+        <p class="goal only-en">Goal: upload to the cloud server, start services, open the public port and verify access</p>
+      </div>
+      <div class="chev">➤</div>
+    </button>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <div class="step-tree">
+
+          <div class="step">
+            <div class="step-no">4.1</div>
+            <div class="step-card">
+              <h4>上传项目代码 <span class="en">Upload project code</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：把后端、前端、配置文件上传到服务器项目目录；<code>venv</code>、<code>node_modules</code>、<code>dist</code>、训练缓存等可重建的大目录不用上传。</p>
+                <p class="en-txt">Do: upload backend, frontend and config files to the server project folder. Skip rebuildable heavy folders like <code>venv</code>, <code>node_modules</code>, <code>dist</code> and training caches.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">4.2</div>
+            <div class="step-card">
+              <h4>配置服务器环境变量 <span class="en">Configure server env</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：在服务器项目根目录复制并填写 <code>.env</code>：数据库用户、密码、库名要和服务器 MySQL 一致。</p>
+                <p class="en-txt">Do: copy and fill in <code>.env</code> at the server project root; DB user, password and name must match the server MySQL.</p>
+              </div>
+              <pre class="cmd">cp .env.docker .env
+nano .env</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">4.3</div>
+            <div class="step-card">
+              <h4>构建并启动服务 <span class="en">Build &amp; start services</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：用 Docker Compose 一键构建并后台启动前后端容器；后端由 gunicorn + eventlet 运行，支持实时推送。</p>
+                <p class="en-txt">Do: build and start frontend + backend containers in the background with Docker Compose; backend runs gunicorn + eventlet for realtime push.</p>
+              </div>
+              <pre class="cmd"><span class="cm"># 构建并后台启动 / Build and start in background</span>
+sudo docker compose up -d --build
+
+<span class="cm"># 查看状态 / Check status</span>
+sudo docker compose ps
+
+<span class="cm"># 查看后端日志 / Backend logs</span>
+sudo docker compose logs -f backend</pre>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">4.4</div>
+            <div class="step-card">
+              <h4>放行公网端口 <span class="en">Open the public port</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：在云服务器控制台防火墙 / 安全组放行网站入口端口（本项目 <code>4173</code>）；数据库 3306 不要对外放行。</p>
+                <p class="en-txt">Do: in the cloud console firewall / security group, open the website entry port (<code>4173</code>). Do NOT expose MySQL 3306.</p>
+              </div>
+              <div class="grid2" style="margin-top:10px">
+                <div class="mini-card">
+                  <h5>🌐 前端 Nginx</h5>
+                  <ul>
+                    <li><span class="zh">对外 4173 → 容器 80</span><span class="en"> · Public 4173 → container 80</span></li>
+                    <li><span class="zh">网站唯一入口</span><span class="en"> · Only public entry</span></li>
+                  </ul>
+                </div>
+                <div class="mini-card">
+                  <h5>🔒 后端 / 数据库</h5>
+                  <ul>
+                    <li><span class="zh">后端 5000 仅容器内网</span><span class="en"> · Backend 5000 internal only</span></li>
+                    <li><span class="zh">MySQL 3306 不对公网</span><span class="en"> · MySQL 3306 not public</span></li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">4.5</div>
+            <div class="step-card">
+              <h4>公网访问验证 <span class="en">Verify public access</span><span class="tag-core">必需 Required</span></h4>
+              <div class="do">
+                <p class="zh">具体做：浏览器打开 <code>http://服务器公网IP:4173/#/login</code>，能看到登录页并成功登录即部署成功；健康检查返回 <code>{"code":0,"msg":"ok"}</code> 表示后端正常。</p>
+                <p class="en-txt">Do: open <code>http://SERVER_IP:4173/#/login</code>; seeing the login page and logging in means success; health check <code>{"code":0,"msg":"ok"}</code> means backend is healthy.</p>
+              </div>
+              <div class="result">✅ <span class="zh">产出：公网可访问的在线系统</span><span class="en"> · Result: a live system reachable from the public internet</span></div>
+            </div>
+          </div>
+
+        </div>
+
+        <div class="note">
+          <div>🔧 <span class="only-zh">常用运维：停止 <code>docker compose down</code>，重启 <code>docker compose restart</code>，改代码后重新构建 <code>docker compose up -d --build</code>。</span>
+            <span class="only-en">Ops: stop <code>docker compose down</code>, restart <code>docker compose restart</code>, rebuild after change <code>docker compose up -d --build</code>.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 可选附加功能 ============ -->
+  <section class="phase" id="p5" data-phase>
+    <button class="phase-head" data-head>
+      <div class="ico">🧩</div>
+      <div class="titles">
+        <h2>可选附加功能 <span class="en">Optional Add-ons</span></h2>
+        <p class="goal only-zh">下面这些不是必须的，按需要再配置</p>
+        <p class="goal only-en">The following are not required; set them up only if needed</p>
+      </div>
+      <div class="chev">➤</div>
+    </button>
+    <div class="phase-body">
+      <div class="phase-inner">
+        <div class="step-tree">
+
+          <div class="step">
+            <div class="step-no">A1</div>
+            <div class="step-card">
+              <h4>内网穿透临时公网地址 <span class="en">Temporary tunnel</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：不买服务器时，可用 cpolar / Cloudflare 隧道把本地服务临时暴露成公网链接做演示；关闭后地址失效。</p>
+                <p class="en-txt">Do: without a server, use a cpolar / Cloudflare tunnel to expose the local service as a temporary public link; the link dies when closed.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">A2</div>
+            <div class="step-card">
+              <h4>模型训练与转换 <span class="en">Model training &amp; conversion</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：在 <code>train/</code> 目录采集数据集、训练轻量 CNN、量化导出 TFLite，供 OpenMV 板端分类使用。</p>
+                <p class="en-txt">Do: in <code>train/</code>, collect a dataset, train a lightweight CNN, quantize and export TFLite for OpenMV board classification.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">A3</div>
+            <div class="step-card">
+              <h4>手机端 App 打包 <span class="en">Mobile app build</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：项目附带 Flutter 手机端，需要时用 Flutter 打包成 APK 安装到手机查看。</p>
+                <p class="en-txt">Do: the project includes a Flutter client; build it into an APK with Flutter when you want to view it on a phone.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">A4</div>
+            <div class="step-card">
+              <h4>开机自启与进程守护 <span class="en">Autostart &amp; process guard</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：生产环境配置开机自动拉起容器、崩溃自动重启，避免服务器重启后服务离线。</p>
+                <p class="en-txt">Do: configure autostart and auto-restart on crash so the service stays online after a reboot.</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="step">
+            <div class="step-no">A5</div>
+            <div class="step-card">
+              <h4>域名与 HTTPS 证书 <span class="en">Domain &amp; HTTPS</span><span class="tag-opt">可选 Optional</span></h4>
+              <div class="do">
+                <p class="zh">具体做：有域名后绑定公网 IP 并配置 HTTPS 证书，让网址更好记、访问更安全。</p>
+                <p class="en-txt">Do: with a domain, bind it to the public IP and set up an HTTPS certificate for a memorable, secure URL.</p>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    OpenMV 果实智能分拣系统 · 从零搭建指南
+    <span class="en">OpenMV Fruit Sorting System · Setup Guide</span>
+  </footer>
+</div>
+
+<script>
+/* ============ 阶段折叠 ============ */
+document.querySelectorAll('[data-phase]').forEach(function(ph){
+  var head = ph.querySelector('[data-head]');
+  var body = ph.querySelector('.phase-body');
+  function sync(){ body.style.maxHeight = ph.classList.contains('open') ? body.scrollHeight + 'px' : '0px'; }
+  head.addEventListener('click', function(){ ph.classList.toggle('open'); sync(); });
+  sync();
+});
+window.addEventListener('resize', function(){
+  document.querySelectorAll('[data-phase].open .phase-body').forEach(function(b){ b.style.maxHeight = b.scrollHeight + 'px'; });
+});
+
+/* ============ 顶部流程点击跳转并展开 ============ */
+document.querySelectorAll('[data-goto]').forEach(function(node){
+  node.addEventListener('click', function(){
+    var id = node.dataset.goto;
+    var ph = document.getElementById(id);
+    if(ph){
+      ph.classList.add('open');
+      var body = ph.querySelector('.phase-body');
+      body.style.maxHeight = body.scrollHeight + 'px';
+      ph.scrollIntoView({behavior:'smooth', block:'start'});
+    }
+  });
+});
+
+/* ============ 语言切换 ============ */
+var body = document.body;
+document.querySelectorAll('#langToggle button').forEach(function(btn){
+  btn.addEventListener('click', function(){
+    document.querySelectorAll('#langToggle button').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+    body.classList.remove('lang-zh','lang-en','lang-mix');
+    body.classList.add('lang-' + btn.dataset.lang);
+  });
+});
+</script>
+</body>
+</html>
