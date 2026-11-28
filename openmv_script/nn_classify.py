@@ -65,7 +65,7 @@ WIFI_PASSWORD = "你的WiFi密码"
 
 SERVER_HOST = "10.153.180.220"          # 后端电脑的局域网 IP
 SERVER_PORT = 5000
-DEVICE_TOKEN = "openmv-device-2026"
+DEVICE_TOKEN = "ha6iFSCuM02CxHb1dzoDw6pW1Tno_HkDIYi4HVGDzsk"  # 与 backend/.env 保持一致（2026-11-28 已轮换）
 
 GOOD_CONFIDENCE = 0.65                  # 置信度达到多少判为「合格」
 REPORT_COOLDOWN_MS = 2500               # 同一个目标最短重复上报间隔

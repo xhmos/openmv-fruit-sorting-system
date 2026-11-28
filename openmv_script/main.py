@@ -50,7 +50,7 @@ WIFI_PASSWORD = "你的WiFi密码"           # 改成对应密码
 
 SERVER_HOST = "10.153.180.220"          # 后端所在电脑的局域网 IPv4（本机 WLAN 地址）
 SERVER_PORT = 5000                      # Flask 端口
-DEVICE_TOKEN = "openmv-device-2026"     # 必须和 backend/.env 里的 DEVICE_TOKEN 一致
+DEVICE_TOKEN = "ha6iFSCuM02CxHb1dzoDw6pW1Tno_HkDIYi4HVGDzsk"  # 必须和 backend/.env 里的 DEVICE_TOKEN 一致（2026-11-28 已轮换）
 
 # esp32 模式用的串口（OpenMV H7 的 UART3 一般接扩展板的 TX/RX）
 ESP32_UART_ID = 3
