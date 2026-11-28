@@ -107,6 +107,58 @@ class OperationLog(db.Model):
         }
 
 
+class SecurityEvent(db.Model):
+    """
+    安全事件：外部「尝试攻击」行为的落地记录。
+
+    和 operation_log 的区别：
+        operation_log —— 自己人干了什么（谁改了参数、谁删了记录）
+        security_event —— 外面的人想干什么（扫路径、试注入、撞密码、越权）
+
+    写入走独立连接（见 utils/security_guard.py），不参与业务事务，
+    所以业务失败也不会把安全日志一起回滚。
+
+    count：同一来源 + 同一类型 + 同一路径在合并窗口内的累计次数。
+           扫描器一秒能发几十个请求，逐条落库会把表写爆，
+           合并成一条带次数的记录，既保留「次数」又不炸库。
+    """
+
+    __tablename__ = "security_event"
+
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    ip = db.Column(db.String(50), nullable=False, default="", index=True)
+    event_type = db.Column(db.String(32), nullable=False, index=True)
+    severity = db.Column(db.String(10), nullable=False, default="low")  # high / medium / low
+    method = db.Column(db.String(10), default="")
+    path = db.Column(db.String(255), default="")
+    status_code = db.Column(db.Integer, default=0)
+    username = db.Column(db.String(50), default="")
+    user_agent = db.Column(db.String(200), default="")
+    detail = db.Column(db.String(255), default="")
+    count = db.Column(db.Integer, nullable=False, default=1)
+    first_time = db.Column(db.DateTime, default=datetime.now, index=True)
+    last_time = db.Column(db.DateTime, default=datetime.now, index=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "ip": self.ip or "",
+            "event_type": self.event_type,
+            "severity": self.severity,
+            "method": self.method or "",
+            "path": self.path or "",
+            "status_code": self.status_code or 0,
+            "username": self.username or "",
+            "user_agent": self.user_agent or "",
+            "detail": self.detail or "",
+            "count": int(self.count or 1),
+            "first_time": self.first_time.strftime("%Y-%m-%d %H:%M:%S")
+            if self.first_time else "",
+            "last_time": self.last_time.strftime("%Y-%m-%d %H:%M:%S")
+            if self.last_time else "",
+        }
+
+
 class SavedDevice(db.Model):
     """
     已保存的设备，类似电脑 WiFi 里的「已保存网络」。

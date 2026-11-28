@@ -33,6 +33,10 @@
           <el-icon><Connection /></el-icon>
           <template #title>设备连接</template>
         </el-menu-item>
+        <el-menu-item v-if="store.isAdmin" index="/security">
+          <el-icon><Lock /></el-icon>
+          <template #title>安全中心</template>
+        </el-menu-item>
         <el-menu-item v-if="store.isAdmin" index="/user">
           <el-icon><UserFilled /></el-icon>
           <template #title>用户管理</template>
@@ -102,6 +106,7 @@ import {
   Tickets,
   SetUp,
   Connection,
+  Lock,
   UserFilled,
   User,
   Fold,

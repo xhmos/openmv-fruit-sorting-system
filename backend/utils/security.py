@@ -162,6 +162,14 @@ def device_required(fn):
     def wrapper(*args, **kwargs):
         token = request.headers.get("X-Device-Token", "")
         if not token or not secrets.compare_digest(token, Config.DEVICE_TOKEN):
+            # 令牌不对要么是设备没配好，要么是有人在伪造上报，记下来供安全中心统计
+            from utils.security_guard import record_event
+
+            record_event(
+                "bad_device_token",
+                detail="X-Device-Token 校验失败" if token else "缺少 X-Device-Token",
+                status_code=401,
+            )
             return jsonify(code=401, msg="设备令牌无效"), 401
         return fn(*args, **kwargs)
 

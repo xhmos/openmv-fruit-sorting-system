@@ -19,6 +19,18 @@ export const recordApi = {
   exportExcel: (params) => request.get('/api/record/export', { params, responseType: 'blob' }),
 }
 
+// 安全中心（仅管理员）：谁在尝试攻击我们、用了什么方式、试了多少次
+export const securityApi = {
+  // 总览：今日/周期统计、趋势、方式分布、来源 IP、最近明细
+  overview: (days = 7) => request.get('/api/security/overview', { params: { days } }),
+  // 明细列表：支持按方式 / 级别 / IP / 路径关键字过滤
+  events: (params) => request.get('/api/security/events', { params }),
+  // 配置体检：调试模式、密钥强度、设备令牌、HTTPS 等
+  checklist: () => request.get('/api/security/checklist'),
+  // 清理历史（默认 90 天前）
+  purge: (days = 90) => request.delete('/api/security/events', { params: { days } }),
+}
+
 // 识别参数
 export const settingApi = {
   list: () => request.get('/api/setting/list'),

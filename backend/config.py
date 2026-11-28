@@ -77,7 +77,7 @@ class Config:
         "pool_recycle": 280,
     }
 
-        # ---------- 设备接入令牌（OpenMV 上报用） ----------
+    # ---------- 设备接入令牌（OpenMV 上报用） ----------
     DEVICE_TOKEN = os.getenv("DEVICE_TOKEN", "openmv-device-2026")
 
 
@@ -90,6 +90,13 @@ class Config:
     # ---------- 跨域白名单 ----------
     # .env 里配置的来源 + 本机各网卡地址对应的前端(5173)，仍然不使用 *
     CORS_ORIGINS = _build_cors_origins()
+
+    # ---------- 安全审计 ----------
+    # 同一来源 + 同一类型 + 同一路径在多少秒内合并成一条记录（只把次数 +1）
+    # 扫描器一秒能发几十个请求，窗口太小会把 security_event 表写爆
+    SECURITY_MERGE_WINDOW = int(os.getenv("SECURITY_MERGE_WINDOW", "60"))
+    # 安全事件保留天数，超出的由每日清理线程删除
+    SECURITY_EVENT_KEEP_DAYS = int(os.getenv("SECURITY_EVENT_KEEP_DAYS", "90"))
 
     # ---------- 首次启动自动创建的管理员 ----------
     DEFAULT_ADMIN_USER = os.getenv("DEFAULT_ADMIN_USER", "admin")

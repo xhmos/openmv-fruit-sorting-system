@@ -24,6 +24,9 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # 拷入打包产物
 COPY --from=builder /app/frontend/dist /usr/share/nginx/html
 
+# 网关层审计日志目录（挂载到宿主机，供后端安全中心读取）
+RUN mkdir -p /var/log/nginx/audit
+
 EXPOSE 80
 
 CMD ["nginx", "-g", "daemon off;"]

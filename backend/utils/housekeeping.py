@@ -16,10 +16,11 @@ import logging
 import os
 import threading
 import time
+from datetime import datetime, timedelta
 
 from config import Config
 from extensions import db
-from models import SortRecord
+from models import SecurityEvent, SortRecord
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +102,32 @@ def cleanup_old_images(retention_days=None, max_files=None):
     return {"scanned": len(items), "deleted": len(removed), "cleared_rows": cleared}
 
 
+def cleanup_security_events(retention_days=None):
+    """
+    删除过期的安全事件。攻击记录属于「侦察情报」，留太久反而占空间、
+    也没必要一直保留别人的扫描指纹，默认 90 天。
+    """
+    days = Config.SECURITY_EVENT_KEEP_DAYS if retention_days is None else retention_days
+    if days <= 0:
+        return 0
+    deadline = datetime.now() - timedelta(days=days)
+    try:
+        deleted = (
+            db.session.query(SecurityEvent)
+            .filter(SecurityEvent.last_time < deadline)
+            .delete(synchronize_session=False)
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        logger.exception("清理安全事件失败")
+        return 0
+
+    if deleted:
+        logger.info("安全事件清理完成：删除 %d 条（保留 %d 天）", deleted, days)
+    return deleted
+
+
 def start_cleanup_thread(app, interval_hours=24):
     """后台守护线程：启动时先跑一次，之后每 interval_hours 小时跑一次。"""
     def _loop():
@@ -110,8 +137,12 @@ def start_cleanup_thread(app, interval_hours=24):
                     cleanup_old_images()
                 except Exception:
                     logger.exception("图片清理任务异常")
+                try:
+                    cleanup_security_events()
+                except Exception:
+                    logger.exception("安全事件清理任务异常")
                 time.sleep(max(1, interval_hours) * 3600)
 
     thread = threading.Thread(target=_loop, name="image-cleanup", daemon=True)
     thread.start()
-    logger.info("图片清理线程已启动（每 %s 小时一次）", interval_hours)
+    logger.info("图片/安全事件清理线程已启动（每 %s 小时一次）", interval_hours)

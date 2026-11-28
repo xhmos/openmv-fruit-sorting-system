@@ -52,10 +52,23 @@ def create_app():
     )
     socketio.init_app(app, cors_allowed_origins=app.config["CORS_ORIGINS"])
 
+    # 生产环境跑在 Nginx 后面：不还原真实客户端 IP 的话，所有请求的来源都是
+    # Nginx 容器的内网地址，登录限流会变成"全体用户共用一个额度"，很容易误伤。
+    # 放在 socketio.init_app 之后，ProxyFix 处于最外层，REST 和 WebSocket 都生效。
+    from werkzeug.middleware.proxy_fix import ProxyFix
+
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
+
+    # 安全审计 + 安全响应头。放在最前面，后面所有请求（含 404）都会经过它。
+    from utils.security_guard import install_security_guard
+
+    install_security_guard(app)
+
     # ---------- 蓝图注册 ----------
     from routes.auth import auth_bp
     from routes.device import device_bp
     from routes.record import record_bp
+    from routes.security import security_bp
     from routes.setting import setting_bp
     from routes.system import system_bp
     from routes.train import train_bp
@@ -64,6 +77,7 @@ def create_app():
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(device_bp, url_prefix="/api/device")
     app.register_blueprint(record_bp, url_prefix="/api/record")
+    app.register_blueprint(security_bp, url_prefix="/api/security")
     app.register_blueprint(setting_bp, url_prefix="/api/setting")
     app.register_blueprint(system_bp, url_prefix="/api/system")
     app.register_blueprint(train_bp, url_prefix="/api/train")
@@ -125,6 +139,18 @@ def create_app():
         _seed_admin(app)
 
     logger.info("应用初始化完成，跨域白名单：%s", ", ".join(app.config["CORS_ORIGINS"]))
+
+    # ---------- 启动时的安全巡检提示 ----------
+    # 这几项是「示例值 / 短密钥」级别的风险，改了会影响现有设备或登录，
+    # 所以不擅自替换，只在日志里显式提醒。
+    if app.config["DEVICE_TOKEN"] == "openmv-device-2026":
+        logger.warning(
+            "DEVICE_TOKEN 仍是示例值 openmv-device-2026，知道它的人可以伪造设备上报。"
+            "请在 .env 生成随机串，并同步修改 openmv_script/main.py、nn_classify.py"
+        )
+    if len(app.config["JWT_SECRET"]) < 32 or app.config["JWT_SECRET"] == app.config["SECRET_KEY"]:
+        logger.warning("JWT_SECRET 过短或与 SECRET_KEY 相同，令牌存在被伪造风险")
+
     return app
 
 

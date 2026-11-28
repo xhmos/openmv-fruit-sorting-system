@@ -18,7 +18,29 @@ server {
     listen 80;
     server_name your-domain.com;      # 换成实际域名或服务器 IP
 
+    server_tokens off;
     client_max_body_size 3m;
+
+    # 安全响应头（页面 + 接口都生效；CSP 的 style 留 unsafe-inline 是 Element Plus 需要）
+    add_header X-Content-Type-Options nosniff always;
+    add_header X-Frame-Options SAMEORIGIN always;
+    add_header Referrer-Policy strict-origin-when-cross-origin always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=(self)" always;
+    add_header Content-Security-Policy "default-src 'self'; img-src 'self' data: blob:; media-src 'self' blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self' ws: wss:; font-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'self'" always;
+
+    # ---------- 敏感路径探测：转给后端返回 404 并记录 ----------
+    # try_files 兜底会把 /.env、/wp-login.php 这类请求返回 200 index.html，
+    # 扫描器会误判为「文件存在」。转给后端既拿到真 404，也让后端的
+    # 特征库把来源 IP / 路径 / 次数写进安全中心。
+    location ~* "(/\.(env|git|svn|hg|htaccess|aws|ds_store)|wp-login|wp-admin|phpmyadmin|xmlrpc\.php|/etc/passwd|phpinfo|actuator|config\.json)" {
+        proxy_pass http://fruit_backend;
+        proxy_http_version 1.1;
+        proxy_set_header Host              $host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $remote_addr;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 30s;
+    }
 
     # ---------- 前端静态页面 ----------
     location / {
@@ -34,7 +56,9 @@ server {
         proxy_http_version 1.1;
         proxy_set_header Host              $host;
         proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        # 覆盖而不是追加：客户端自带的 X-Forwarded-For 不可信，
+        # 追加会让攻击者伪造 IP 绕过登录限流、污染安全审计的来源
+        proxy_set_header X-Forwarded-For   $remote_addr;
         proxy_set_header X-Forwarded-Proto $scheme;
         proxy_read_timeout 60s;
     }

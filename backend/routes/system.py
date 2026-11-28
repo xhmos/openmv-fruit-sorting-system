@@ -17,6 +17,7 @@
     3. 结果缓存 20 秒，避免用户连点刷新把服务器拖慢。
 """
 
+import ipaddress
 import json
 import platform
 import re
@@ -26,12 +27,14 @@ import sys
 import time
 import urllib.request
 from datetime import datetime
+from urllib.parse import urlparse
 
 from flask import Blueprint, jsonify, request
 
 from extensions import db
 from models import SavedDevice
 from utils.security import admin_required, login_required, sanitize_text, write_operation_log
+from utils.security_guard import record_event
 
 system_bp = Blueprint("system", __name__)
 
@@ -309,10 +312,49 @@ def _probe_serial(target):
     return False, "系统里没有 %s 这个端口，检查线插没插、驱动装没装" % port
 
 
+def _is_cloud_metadata_target(host):
+    """
+    判断目标是不是云厂商的元数据地址（169.254.0.0/16、100.100.100.200 等）。
+
+    为什么要单独挡这一层：
+        「网络流」需要连局域网摄像头，所以不能把所有内网地址都禁掉；
+        但云服务器上的 169.254.169.254 这类地址能拿到实例的临时凭证，
+        正常业务永远不会去连它，命中即可视为探测行为。
+    """
+    host = (host or "").strip().lower().strip("[]")
+    if not host:
+        return False
+    if host in ("metadata.google.internal", "metadata", "metadata.tencentyun.com"):
+        return True
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    if ip.is_link_local:  # 169.254.0.0/16，云元数据都落在这里
+        return True
+    if str(ip) == "100.100.100.200":
+        return True
+    return False
+
+
 def _probe_stream(target):
     url = target.strip()
     if not url.lower().startswith(("http://", "https://")):
         return False, "网络流地址要以 http:// 或 https:// 开头"
+
+    parsed = urlparse(url)
+    host = parsed.hostname or ""
+    if not host:
+        return False, "地址里没有主机名"
+
+    # SSRF 防护：云元数据地址一律拒绝，并记一条安全事件
+    if _is_cloud_metadata_target(host):
+        record_event(
+            "ssrf",
+            detail=f"尝试探测云元数据地址：{host}",
+            status_code=400,
+        )
+        return False, "该地址属于云平台内部地址，安全策略已拒绝访问"
 
     try:
         req = urllib.request.Request(url, method="GET")

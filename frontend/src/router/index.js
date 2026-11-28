@@ -44,6 +44,12 @@ const routes = [
         meta: { title: '用户管理', admin: true },
       },
       {
+        path: 'security',
+        name: 'SecurityCenter',
+        component: () => import('../views/Security.vue'),
+        meta: { title: '安全中心', admin: true },
+      },
+      {
         path: 'profile',
         name: 'Profile',
         component: () => import('../views/Profile.vue'),

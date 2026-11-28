@@ -21,13 +21,35 @@ services:
       FLASK_DEBUG: "0"
       HOST: 0.0.0.0
       PORT: "5000"
+      # 应用密钥必须由编排层注入：
+      # 不注入时 config.py 会退回默认值 dev-secret-key，
+      # 任何看过源码的人都能用它伪造管理员 JWT（部署时真实踩过这个坑）
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      # 设备上报令牌：不注入时 config.py 会退回示例值 openmv-device-2026，
+      # 任何人都能用它伪造 OpenMV 上报假数据（2026-11-28 已轮换为随机串，
+      # 设备端 openmv_script/main.py 与 nn_classify.py 里的 DEVICE_TOKEN 必须同步）
+      DEVICE_TOKEN: ${DEVICE_TOKEN}
+      # 跨域白名单（同源访问其实不需要，写上是为了以后换域名不踩坑）
+      CORS_ORIGINS: ${CORS_ORIGINS}
+      # 安全事件合并窗口 / 保留天数
+      SECURITY_MERGE_WINDOW: "60"
+      SECURITY_EVENT_KEEP_DAYS: "90"
     volumes:
       # 上传图片持久化到宿主机，容器重建不丢图
       - ./backend/uploads:/app/backend/uploads
+      # 只读挂载前端容器的 Nginx 审计日志，安全中心从这里同步「网关层拦截」
+      - ./logs/nginx:/app/logs/nginx
     restart: unless-stopped
     # 后端端口不对公网直接暴露，由前端 Nginx 反代；如需调试可放开 5000
     expose:
       - "5000"
+    # 容器日志限制，避免日志无限增长写满系统盘
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
 
   # ---------- 前端服务（Nginx 托管静态文件 + 反代后端） ----------
   frontend:
@@ -38,6 +60,14 @@ services:
     ports:
       # 宿主机 4173 -> 容器 80，公网通过 http://服务器IP:4173 访问
       - "4173:80"
+    volumes:
+      # 网关层审计日志落盘，供后端读取统计（只写 400/444 这类畸形请求，增长很慢）
+      - ./logs/nginx:/var/log/nginx/audit
     depends_on:
       - backend
     restart: unless-stopped
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

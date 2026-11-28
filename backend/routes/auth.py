@@ -15,12 +15,13 @@ from utils.security import (
     sanitize_text,
     save_upload_image,
 )
+from utils.security_guard import record_event
 
 auth_bp = Blueprint("auth", __name__)
 
 
 @auth_bp.post("/login")
-@limiter.limit("5 per minute")  # 防暴力破解：同一 IP 每分钟最多 5 次
+@limiter.limit("10 per minute")  # 防暴力破解：同一 IP 每分钟最多 10 次
 def login():
     payload = request.get_json(silent=True) or {}
     username = sanitize_text(payload.get("username"), 50)
@@ -34,6 +35,13 @@ def login():
     user = User.query.filter_by(username=username).first()
     # 不区分“用户不存在”和“密码错误”，避免枚举账号
     if user is None or not user.check_password(password):
+        # 安全审计：这条就是「有人在撞密码」的证据，按来源 IP 合并计数
+        record_event(
+            "brute_force",
+            detail="账号或密码错误",
+            username=username,
+            status_code=401,
+        )
         return jsonify(code=401, msg="账号或密码错误"), 401
     if not user.is_active:
         return jsonify(code=403, msg="该账号已被禁用，请联系管理员"), 403
